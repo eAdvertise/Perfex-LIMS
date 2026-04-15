@@ -17,14 +17,12 @@ $subjects = $CI->db
     ->order_by('id', 'DESC')
     ->get()
     ->result();
-
-$can_manage_subjects = has_permission('lims', '', 'manage_orders') || has_permission('lims', '', 'admin');
 ?>
 
 <div class="row">
     <div class="col-md-12">
         <div class="mbot15">
-            <?php if ($can_manage_subjects): ?>
+            <?php if (has_permission('lims', '', 'manage_orders') || has_permission('lims', '', 'admin')): ?>
                 <a href="<?php echo admin_url('lims/subjects/create'); ?>" class="btn btn-primary">
                     <i class="fa fa-plus"></i> <?php echo _l('new'); ?>
                 </a>
@@ -79,7 +77,7 @@ $can_manage_subjects = has_permission('lims', '', 'manage_orders') || has_permis
                                 <a href="<?php echo admin_url('lims/subjects/view/' . (int)$s->id); ?>" class="btn btn-default btn-sm">
                                     <i class="fa fa-eye"></i>
                                 </a>
-                                <?php if ($can_manage_subjects): ?>
+                                <?php if (has_permission('lims', '', 'manage_orders') || has_permission('lims', '', 'admin')): ?>
                                     <a href="<?php echo admin_url('lims/subjects/delete/' . (int)$s->id . '?return_to=client_tab&client_id=' . (int)$client_id); ?>"
                                        class="btn btn-danger btn-sm js-lims-subject-delete"
                                        data-subject-id="<?php echo (int)$s->id; ?>">
