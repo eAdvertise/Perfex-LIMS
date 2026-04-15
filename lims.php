@@ -293,6 +293,14 @@ hooks()->add_filter('customer_profile_tabs', 'lims_customer_profile_tabs');
 function lims_customer_profile_tabs($tabs)
 {
     $tabs[] = [
+        'slug'     => 'lims-subjects',
+        'name'     => _l('lims_subjects') ?: 'Subjects',
+        'icon'     => 'fa fa-user-injured',
+        'position' => 9,
+        'view'     => 'lims/admin/subjects/client_tab',
+    ];
+
+    $tabs[] = [
         'slug'     => 'lims-contracts',
         'name'     => _l('lims_contracts'),
         'icon'     => 'fa fa-vial',
