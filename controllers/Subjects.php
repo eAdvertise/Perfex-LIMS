@@ -8,6 +8,7 @@ class Subjects extends AdminController
     {
         parent::__construct();
         $this->load->model('lims/subjects_model');
+        $this->load->model('clients_model');
         $this->load->model('staff_model');
         $this->load->model('misc_model');
 
@@ -65,17 +66,17 @@ class Subjects extends AdminController
 			// create → δείξε το επόμενο διαθέσιμο
 			$subject_code = $this->subjects_model->generate_internal_code();
 		}
-		if ($this->input->post()) {
+			if ($this->input->post()) {
 
-			$post = $this->input->post();
+				$post = $this->input->post();
 
-			// ----- Customer mode -----
-			$mode = isset($post['customer_mode']) ? $post['customer_mode'] : 'existing';
+				// ----- Customer mode -----
+				$mode = isset($post['customer_mode']) ? $post['customer_mode'] : 'existing';
 
-			if ($mode === 'new') {
-				// Δημιούργησε νέο customer + primary contact
-				$new = [
-					'company'             => $post['new_customer_company'] ?? '',
+				if ($mode === 'new') {
+					// Δημιούργησε νέο customer + primary contact (χωρίς να καλέσουμε clients_model->add για contact)
+					$new = [
+						'company'             => $post['new_customer_company'] ?? '',
 					'vat'                 => $post['new_customer_vat'] ?? '',
 					'phonenumber'         => $post['new_customer_phone'] ?? '',
 					'website'             => $post['new_customer_website'] ?? '',
@@ -96,29 +97,49 @@ class Subjects extends AdminController
 					'shipping_country'    => $post['new_customer_country'] ?? '',
 				];
 
-				$customer_id = $this->clients_model->add($new);
+					$this->db->trans_begin();
+					$customer_id = $this->clients_model->add($new);
 
-				if ($customer_id) {
-					// primary contact
-					$contact = [
-						'firstname' => $post['new_customer_firstname'] ?? ($new['company'] ?: ''),
-						'lastname'  => $post['new_customer_lastname'] ?? '',
-						'email'     => $post['new_customer_email'] ?? '',
-						'phonenumber' => $post['new_customer_phone'] ?? '',
-						'password'  => app_generate_hash(),
-						'is_primary' => 1,
-						'active'    => 1,
-					];
+					if ($customer_id) {
+						$contactFirstname = trim((string)($post['new_customer_firstname'] ?? ''));
+						$contactLastname  = trim((string)($post['new_customer_lastname'] ?? ''));
+						$contactEmail     = trim((string)($post['new_customer_email'] ?? ''));
+						$contactPhone     = trim((string)($post['new_customer_phone'] ?? ''));
 
-					$this->load->model('clients_model');
-					$contact_id = $this->clients_model->add($contact, $customer_id);
+						if ($contactFirstname === '') {
+							$contactFirstname = trim((string)($new['company'] ?? '')) ?: 'Primary';
+						}
 
-					$post['client_id'] = $customer_id;
-					$post['primary_contact_id'] = $contact_id ?: null;
-				} else {
-					set_alert('danger', _l('problem_adding') ?: 'Could not create customer.');
-					redirect(admin_url('lims/subjects/create'));
-				}
+						$contactInsert = [
+							'userid'      => (int)$customer_id,
+							'is_primary'  => 1,
+							'firstname'   => $contactFirstname,
+							'lastname'    => $contactLastname,
+							'email'       => $contactEmail !== '' ? $contactEmail : null,
+							'phonenumber' => $contactPhone !== '' ? $contactPhone : null,
+							'title'       => '',
+							'datecreated' => date('Y-m-d H:i:s'),
+							'direction'   => 0,
+							'active'      => 1,
+						];
+
+						$this->db->insert(db_prefix() . 'contacts', $contactInsert);
+						$contact_id = (int)$this->db->insert_id();
+
+						if ($this->db->trans_status() === false || !$contact_id) {
+							$this->db->trans_rollback();
+							set_alert('danger', _l('problem_adding') ?: 'Could not create customer contact.');
+							redirect(admin_url('lims/subjects/create'));
+						}
+
+						$this->db->trans_commit();
+						$post['client_id']          = (int)$customer_id;
+						$post['primary_contact_id'] = (int)$contact_id;
+					} else {
+						$this->db->trans_rollback();
+						set_alert('danger', _l('problem_adding') ?: 'Could not create customer.');
+						redirect(admin_url('lims/subjects/create'));
+					}
 			} else {
 				// existing customer
 				$post['primary_contact_id'] = null;
