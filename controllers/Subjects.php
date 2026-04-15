@@ -1,0 +1,590 @@
+<?php
+
+defined('BASEPATH') or exit('No direct script access allowed');
+
+class Subjects extends AdminController
+{
+    public function __construct()
+    {
+        parent::__construct();
+        $this->load->model('lims/subjects_model');
+        $this->load->model('staff_model');
+        $this->load->model('misc_model');
+
+        // ΠΟΛΥ ΣΗΜΑΝΤΙΚΟ: helper για handle_file_upload()
+        $this->load->helper('upload');
+    }
+
+    public function index()
+    {
+        if (!has_permission('lims', '', 'view')) {
+            access_denied('lims');
+        }
+
+        $p = db_prefix();
+
+        // Φέρνουμε όλα τα subjects + client company (αν υπάρχει)
+        $rows = $this->db
+            ->select('s.*, c.company AS client_company')
+            ->from($p . 'lims_subjects AS s')
+            ->join($p . 'clients AS c', 'c.userid = s.client_id', 'left')
+            ->order_by('s.id', 'DESC')
+            ->get()
+            ->result();
+
+        $data['rows']  = $rows;
+        $data['title'] = _l('lims_subjects');
+
+        $this->load->view('lims/admin/subjects/manage', $data);
+    }
+
+    /**
+     * Create / Edit form
+     * URL:
+     *  - /admin/lims/subjects/create
+     *  - /admin/lims/subjects/create/{id}
+     */
+    public function create($id = null)
+	{
+		
+		if (!has_permission('lims', '', 'manage_orders') && !has_permission('lims', '', 'admin')) {
+			access_denied('lims');
+		}
+
+		$id      = $id ? (int)$id : null;
+		$subject = $id ? $this->subjects_model->get($id) : null;
+		$subject_code = $this->subjects_model->generate_internal_code();
+		
+		if ($id && !$subject) {
+			show_404();
+		}
+		if ($subject) {
+			// edit → δείξε αυτό που ήδη έχει η εγγραφή
+			$subject_code = $subject->internal_code ?? $subject->code ?? '';
+		} else {
+			// create → δείξε το επόμενο διαθέσιμο
+			$subject_code = $this->subjects_model->generate_internal_code();
+		}
+		if ($this->input->post()) {
+
+			$post = $this->input->post();
+
+			// ----- Customer mode -----
+			$mode = isset($post['customer_mode']) ? $post['customer_mode'] : 'existing';
+
+			if ($mode === 'new') {
+				// Δημιούργησε νέο customer + primary contact
+				$new = [
+					'company'             => $post['new_customer_company'] ?? '',
+					'vat'                 => $post['new_customer_vat'] ?? '',
+					'phonenumber'         => $post['new_customer_phone'] ?? '',
+					'website'             => $post['new_customer_website'] ?? '',
+					'country'             => $post['new_customer_country'] ?? '',
+					'city'                => $post['new_customer_city'] ?? '',
+					'address'             => $post['new_customer_address'] ?? '',
+					'zip'                 => $post['new_customer_zip'] ?? '',
+					'state'               => $post['new_customer_state'] ?? '',
+					'billing_street'      => $post['new_customer_address'] ?? '',
+					'billing_city'        => $post['new_customer_city'] ?? '',
+					'billing_state'       => $post['new_customer_state'] ?? '',
+					'billing_zip'         => $post['new_customer_zip'] ?? '',
+					'billing_country'     => $post['new_customer_country'] ?? '',
+					'shipping_street'     => $post['new_customer_address'] ?? '',
+					'shipping_city'       => $post['new_customer_city'] ?? '',
+					'shipping_state'      => $post['new_customer_state'] ?? '',
+					'shipping_zip'        => $post['new_customer_zip'] ?? '',
+					'shipping_country'    => $post['new_customer_country'] ?? '',
+				];
+
+				$customer_id = $this->clients_model->add($new);
+
+				if ($customer_id) {
+					// primary contact
+					$contact = [
+						'firstname' => $post['new_customer_firstname'] ?? ($new['company'] ?: ''),
+						'lastname'  => $post['new_customer_lastname'] ?? '',
+						'email'     => $post['new_customer_email'] ?? '',
+						'phonenumber' => $post['new_customer_phone'] ?? '',
+						'password'  => app_generate_hash(),
+						'is_primary' => 1,
+						'active'    => 1,
+					];
+
+					$this->load->model('clients_model');
+					$contact_id = $this->clients_model->add($contact, $customer_id);
+
+					$post['client_id'] = $customer_id;
+					$post['primary_contact_id'] = $contact_id ?: null;
+				} else {
+					set_alert('danger', _l('problem_adding') ?: 'Could not create customer.');
+					redirect(admin_url('lims/subjects/create'));
+				}
+			} else {
+				// existing customer
+				$post['primary_contact_id'] = null;
+				$post['client_id'] = !empty($post['client_id']) ? (int)$post['client_id'] : null;
+				if (!$post['client_id']) {
+					$post['client_id'] = null;
+				}
+			}
+
+			// active checkbox (αν δεν σταλεί)
+			if (!isset($post['active'])) {
+				$post['active'] = 0;
+			}
+
+			// καθάρισε τα new_customer_* να μην σε νοιάζουν στο model
+			foreach ($post as $k => $v) {
+				if (strpos($k, 'new_customer_') === 0 || $k === 'customer_mode') {
+					unset($post[$k]);
+				}
+			}
+
+			if ($id) {
+				$success = $this->subjects_model->update($id, $post);
+				if ($success) {
+					set_alert('success', _l('updated_successfully'));
+				}
+				redirect(admin_url('lims/subjects/view/' . $id));
+			} else {
+				$newId = $this->subjects_model->create($post);
+				if ($newId) {
+					set_alert('success', _l('added_successfully'));
+					redirect(admin_url('lims/subjects/view/' . $newId));
+				} else {
+					set_alert('danger', _l('problem_adding') ?: 'Could not create subject.');
+					redirect(admin_url('lims/subjects/create'));
+				}
+			}
+		}
+
+		// clients list για dropdown
+		$clients = $this->db
+			->select('userid, company')
+			->from(db_prefix().'clients')
+			->order_by('company','ASC')
+			->get()->result_array();
+
+		$data['subject'] = $subject;
+		$data['internal_code'] = $subject_code;
+		$data['clients'] = $clients;
+
+		// Active languages from Setup -> Settings -> Localization (Enabled Languages / Disable Languages)
+		$data['languages'] = $this->subjects_model->get_active_languages_dropdown();
+
+		$data['title']   = $id
+			? ((_l('lims_subject_edit') ?: 'Edit Subject').' #'.$id)
+			: (_l('lims_subject_new') ?: 'New Subject');
+
+		$this->load->view('lims/admin/subjects/form', $data);
+	}
+
+
+	public function view($id)
+	{
+		if (!has_permission('lims', '', 'view')) {
+			access_denied('lims');
+		}
+
+		$id      = (int)$id;
+		$subject = $this->subjects_model->get($id);
+
+		if (!$subject) {
+			show_404();
+		}
+
+		$client  = $this->subjects_model->get_client($subject);
+		$orders  = $this->subjects_model->get_orders($id);
+		$samples = $this->subjects_model->get_samples($id);
+
+		// group = ποιά επιλογή είναι ενεργή στο αριστερό menu
+		$group = $this->input->get('group');
+		if ($group === null || $group === '') {
+			$group = 'profile';
+		}
+
+		$allowed_groups = [
+			'profile',
+			'orders',
+			'samples',
+			'invoices',
+			'creditnotes',
+			'receipts_payments',
+			'waybills',
+			'notes',
+			'files',
+			'reminders',
+		];
+		if (!in_array($group, $allowed_groups, true)) {
+			$group = 'profile';
+		}
+
+		// Display name για τίτλο (όπως στο customer)
+		$displayName = '';
+		if ($subject->subject_type === 'patient') {
+			$displayName = trim(($subject->first_name ?? '') . ' ' . ($subject->last_name ?? ''));
+		}
+		if ($displayName === '' && !empty($subject->subject_name)) {
+			$displayName = $subject->subject_name;
+		}
+		if ($displayName === '') {
+			$displayName = '#' . $id;
+		}
+
+		$data['subject'] = $subject;
+		$data['client']  = $client;
+		$data['orders']  = $orders;
+		$data['samples'] = $samples;
+		$data['group']   = $group;
+		$data['title']   = $displayName;
+
+		$subjectId = $id;
+
+		// =========================
+		// Billing data για subject
+		// =========================
+
+		// NOTE:
+		// Τα core Perfex tables (invoices/creditnotes/invoicepaymentrecords) ΔΕΝ έχουν by default column subject_id.
+		// Σε παλιές εγκαταστάσεις μπορεί να υπάρχει custom column. Σε fresh installs κάνουμε safe-guard.
+
+		// Invoices
+		$data['billing_invoices'] = [];
+		$tblInvoices = db_prefix() . 'invoices';
+		if ($this->db->table_exists($tblInvoices) && $this->db->field_exists('subject_id', $tblInvoices)) {
+			$data['billing_invoices'] = $this->db
+				->where('subject_id', $id)
+				->order_by('date', 'DESC')
+				->get($tblInvoices)
+				->result();
+		}
+
+		// Credit Notes
+		$data['billing_creditnotes'] = [];
+		$tblCredit = db_prefix() . 'creditnotes';
+		if ($this->db->table_exists($tblCredit) && $this->db->field_exists('subject_id', $tblCredit)) {
+			$data['billing_creditnotes'] = $this->db
+				->where('subject_id', $id)
+				->order_by('date', 'DESC')
+				->get($tblCredit)
+				->result();
+		}
+
+		// Delivery Notes
+		$data['billing_delivery_notes'] = [];
+		$tblDelivery = db_prefix() . 'delivery_notes';
+		if ($this->db->table_exists($tblDelivery) && $this->db->field_exists('subject_id', $tblDelivery)) {
+			$data['billing_delivery_notes'] = $this->db
+				->where('subject_id', $id)
+				->order_by('date', 'DESC')
+				->get($tblDelivery)
+				->result();
+		}
+
+		// Receipts
+		$data['billing_receipts'] = [];
+		$tblReceipts = db_prefix() . 'receipts';
+		if ($this->db->table_exists($tblReceipts) && $this->db->field_exists('subject_id', $tblReceipts)) {
+			$data['billing_receipts'] = $this->db
+				->where('subject_id', $id)
+				->order_by('payment_date', 'DESC')
+				->get($tblReceipts)
+				->result();
+		}
+
+		// Payments (invoicepaymentrecords) – μόνο αν δεν έχουμε receipts
+		$data['billing_payments'] = [];
+		$tblPayments = db_prefix() . 'invoicepaymentrecords';
+		if (empty($data['billing_receipts']) && $this->db->table_exists($tblPayments) && $this->db->field_exists('subject_id', $tblPayments)) {
+			$data['billing_payments'] = $this->db
+				->where('subject_id', $id)
+				->order_by('date', 'DESC')
+				->get($tblPayments)
+				->result();
+		}
+		// ==================================
+		// Notes / Files / Reminders για Subject
+		// ==================================
+		$this->load->model('misc_model');
+
+		// NOTES (τύπος lims_subject)
+		if ($group === 'notes') {
+			$data['user_notes'] = $this->misc_model->get_notes($id, 'lims_subject');
+		}
+		// REMINDERS (τύπος lims_subject)
+		if ($group === 'reminders') {
+
+			// Reminders για αυτό το Subject
+			$reminders = $this->db
+				->select(db_prefix() . 'reminders.*, ' .
+						 db_prefix() . 'staff.firstname, ' .
+						 db_prefix() . 'staff.lastname')
+				->from(db_prefix() . 'reminders')
+				->join(
+					db_prefix() . 'staff',
+					db_prefix() . 'staff.staffid = ' . db_prefix() . 'reminders.staff',
+					'left'
+				)
+				->where(db_prefix() . 'reminders.rel_type', 'lims_subject')
+				->where(db_prefix() . 'reminders.rel_id', $id)
+				->order_by(db_prefix() . 'reminders.date', 'DESC')
+				->get()
+				->result_array();
+
+			$data['reminders'] = $reminders;
+
+		}
+		// Attachments (Files panel)
+		
+		if ($group === 'files') {
+			$data['attachments'] = $this->db
+				->select('f.*, s.firstname, s.lastname')
+				->from(db_prefix().'files AS f')
+				->join(db_prefix().'staff AS s', 's.staffid = f.staffid', 'left')
+				->where('f.rel_type', 'lims_subject')
+				->where('f.rel_id', $subjectId)
+				->order_by('f.dateadded', 'DESC')
+				->get()->result();
+		}
+
+
+
+		$this->load->view('lims/admin/subjects/profile', $data);
+	}
+
+
+
+
+	public function ajax_customer_details($client_id)
+	{
+		if (!is_staff_logged_in()) {
+			show_404();
+		}
+
+		$client_id = (int)$client_id;
+		if ($client_id <= 0) {
+			echo json_encode(['success' => false]);
+			die;
+		}
+
+		$p = db_prefix();
+
+		// Βασικά στοιχεία πελάτη
+		$client = $this->db
+			->where('userid', $client_id)
+			->get($p . 'clients')
+			->row();
+
+		if (!$client) {
+			echo json_encode(['success' => false]);
+			die;
+		}
+
+		// Primary contact (αν υπάρχει)
+		$primary = $this->db
+			->where([
+				'userid'    => $client_id,
+				'is_primary'=> 1,
+			])
+			->get($p . 'contacts')
+			->row();
+
+		echo json_encode([
+			'success'   => true,
+			'company'   => $client->company,
+			'phone'     => $client->phonenumber,
+			'address'   => $client->address,
+			'city'      => $client->city,
+			'zip'       => $client->zip,
+			'country'   => (int)$client->country,
+			'email'     => $primary ? $primary->email      : '',
+			'firstname' => $primary ? $primary->firstname  : '',
+			'lastname'  => $primary ? $primary->lastname   : '',
+		]);
+		die;
+	}
+	public function table()
+	{
+		if (!has_permission('lims', '', 'view')) {
+			ajax_access_denied();
+		}
+
+		// λέμε στο Perfex να φορτώσει το view modules/lims/views/admin/subjects/table.php
+		$this->app->get_table_data(module_views_path('lims', 'admin/subjects/table'));
+	}
+	public function upload_attachment($id)
+	{
+		if (!has_permission('lims', '', 'view')) {
+			access_denied('lims');
+		}
+
+		$id = (int) $id;
+		if ($id <= 0) {
+			show_404();
+		}
+
+		if (!isset($_FILES['file'])) {
+			return;
+		}
+
+		// === 1) ΒΑΣΙΚΟΣ ΦΑΚΕΛΟΣ ΓΙΑ ΟΛΑ ΤΑ SUBJECTS ===
+		$base = FCPATH . 'uploads/lims_subjects/';
+
+		// Αν δεν υπάρχει ο /uploads/lims_subjects, τον φτιάχνουμε εμείς
+		if (!is_dir($base)) {
+			// recursive = true για να δημιουργήσει και τα ενδιάμεσα
+			@mkdir($base, 0755, true);
+			// index.html για λόγους security, όπως κάνει και το core
+			@fopen(rtrim($base, '/') . '/index.html', 'w');
+		}
+
+		// === 2) ΦΑΚΕΛΟΣ ΓΙΑ ΣΥΓΚΕΚΡΙΜΕΝΟ SUBJECT ===
+		$path = $base . $id . '/';
+
+		// Από εδώ και κάτω μπορεί να αναλάβει το core helper
+		if (
+			isset($_FILES['file']['name']) &&
+			($_FILES['file']['name'] != '' || (is_array($_FILES['file']['name']) && count($_FILES['file']['name']) > 0))
+		) {
+			if (!is_array($_FILES['file']['name'])) {
+				$_FILES['file']['name']     = [$_FILES['file']['name']];
+				$_FILES['file']['type']     = [$_FILES['file']['type']];
+				$_FILES['file']['tmp_name'] = [$_FILES['file']['tmp_name']];
+				$_FILES['file']['error']    = [$_FILES['file']['error']];
+				$_FILES['file']['size']     = [$_FILES['file']['size']];
+			}
+
+			// Fix στα indexes (0,2 → 0,1 κλπ)
+			_file_attachments_index_fix('file');
+
+			for ($i = 0; $i < count($_FILES['file']['name']); $i++) {
+
+				// Error ή μη επιτρεπτό extension → skip
+				if (_perfex_upload_error($_FILES['file']['error'][$i])
+					|| !_upload_extension_allowed($_FILES['file']['name'][$i])) {
+					continue;
+				}
+
+				$tmpFilePath = $_FILES['file']['tmp_name'][$i];
+				if (empty($tmpFilePath)) {
+					continue;
+				}
+
+				// Δημιουργεί τον φάκελο /uploads/lims_subjects/{id}/ αν λείπει
+				_maybe_create_upload_path($path);
+
+				// Μοναδικό όνομα αρχείου
+				$filename    = unique_filename($path, $_FILES['file']['name'][$i]);
+				$newFilePath = $path . $filename;
+
+				if (move_uploaded_file($tmpFilePath, $newFilePath)) {
+
+					// Αν είναι εικόνα, φτιάξε thumbnail (χρησιμοποιούμε DIR, όχι full path)
+					if (is_image($newFilePath)) {
+						create_img_thumb($path, $filename);
+					}
+
+					// Προετοιμασία εγγραφής για tblfiles
+					$attachment   = [];
+					$attachment[] = [
+						'file_name' => $filename,
+						'filetype'  => $_FILES['file']['type'][$i],
+					];
+
+					// Αποθήκευση στη βάση με rel_type = 'lims_subject'
+					$this->misc_model->add_attachment_to_database($id, 'lims_subject', $attachment);
+				}
+			}
+		}
+
+		// Dropzone είναι οκ με 200 response, δεν χρειάζεται να κάνουμε echo
+	}
+
+
+
+	public function add_external_attachment()
+	{
+		if (!has_permission('lims', '', 'view')) {
+			access_denied('lims');
+		}
+
+		$subject_id = (int) $this->input->post('subject_id');
+		$files      = $this->input->post('files');
+		$external   = (int) $this->input->post('external');
+
+		if ($subject_id > 0 && $files) {
+			$this->load->model('misc_model');
+
+			$this->misc_model->add_attachment_to_database(
+				$subject_id,
+				'lims_subject',
+				$files,
+				$external
+			);
+		}
+
+		redirect(admin_url('lims/subjects/view/' . $subject_id . '?group=files'));
+	}
+
+	public function delete_attachment($subject_id, $attachment_id)
+	{
+		if (!has_permission('lims', '', 'view')) {
+			access_denied('lims');
+		}
+
+		$subject_id    = (int)$subject_id;
+		$attachment_id = (int)$attachment_id;
+
+		// Σβήνουμε από tblfiles μόνο αν όντως ανήκει σε lims_subject & σωστό subject
+		$this->db->where('id', $attachment_id);
+		$this->db->where('rel_type', 'lims_subject');
+		$this->db->where('rel_id', $subject_id);
+		$this->db->delete(db_prefix() . 'files');
+
+		redirect(admin_url('lims/subjects/view/' . $subject_id . '?group=files'));
+	}
+
+	public function ajax_quick_create()
+	{
+		if (!is_staff_logged_in()) {
+			show_404();
+		}
+
+		if (!$this->input->is_ajax_request()) {
+			show_404();
+		}
+		
+		$data = $this->input->post(null, true);
+
+		// εδώ ήταν το add_quick()
+		$id = $this->subjects_model->add_quick($data);
+
+		if ($id) {
+			// Φτιάχνουμε name για το dropdown
+			$display = '';
+
+			if (!empty($data['last_name']) || !empty($data['first_name'])) {
+				$display = trim(($data['last_name'] ?? '') . ' ' . ($data['first_name'] ?? ''));
+			}
+
+			if ($display === '' && !empty($data['subject_name'])) {
+				$display = $data['subject_name'];
+			}
+
+			if ($display === '') {
+				$display = 'Subject #' . $id;
+			}
+
+			echo json_encode([
+				'success' => true,
+				'id'      => $id,
+				'name'    => $display,
+			]);
+		} else {
+			echo json_encode(['success' => false]);
+		}
+		die;
+	}
+
+
+}

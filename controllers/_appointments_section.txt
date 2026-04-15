@@ -1,0 +1,26 @@
+<?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
+<?php if (empty($appointments)): ?>
+  <p class="text-muted"><?php echo _l('no_items_found') ?: '—'; ?></p>
+<?php else: ?>
+  <ul class="list-unstyled">
+    <?php foreach ($appointments as $ap): ?>
+      <li class="mbot10">
+        <strong><?php echo _dt($ap->appointment_at); ?></strong>
+        <span class="label label-default mleft5">
+          <?php echo $ap->visit_type === 'home' ? _l('lims_visit_type_home') : _l('lims_visit_type_lab'); ?>
+        </span>
+        <?php if (!empty($ap->location_text)): ?>
+          <div class="text-muted"><small><?php echo html_escape($ap->location_text); ?></small></div>
+        <?php endif; ?>
+        <?php if (!empty($ap->assigned_staff)): ?>
+          <div class="text-muted">
+            <small>
+              <?php echo _l('lims_assigned_staff'); ?>:
+              <?php echo html_escape(get_staff_full_name((int)$ap->assigned_staff)); ?>
+            </small>
+          </div>
+        <?php endif; ?>
+      </li>
+    <?php endforeach; ?>
+  </ul>
+<?php endif; ?>
