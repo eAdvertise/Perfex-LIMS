@@ -77,6 +77,13 @@ $subjects = $CI->db
                                 <a href="<?php echo admin_url('lims/subjects/view/' . (int)$s->id); ?>" class="btn btn-default btn-sm">
                                     <i class="fa fa-eye"></i>
                                 </a>
+                                <?php if (has_permission('lims', '', 'manage_orders') || has_permission('lims', '', 'admin')): ?>
+                                    <a href="<?php echo admin_url('lims/subjects/delete/' . (int)$s->id . '?return_to=client_tab&client_id=' . (int)$client_id); ?>"
+                                       class="btn btn-danger btn-sm js-lims-subject-delete"
+                                       data-subject-id="<?php echo (int)$s->id; ?>">
+                                        <i class="fa fa-trash"></i>
+                                    </a>
+                                <?php endif; ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -86,3 +93,72 @@ $subjects = $CI->db
         <?php endif; ?>
     </div>
 </div>
+
+<script>
+    (function () {
+        "use strict";
+
+        function buildDeleteUrl(subjectId, mode, targetId) {
+            var url = "<?php echo admin_url('lims/subjects/delete/'); ?>" + subjectId
+                + "?mode=" + encodeURIComponent(mode)
+                + "&return_to=client_tab"
+                + "&client_id=<?php echo (int)$client_id; ?>";
+            if (targetId) {
+                url += "&target_subject_id=" + encodeURIComponent(targetId);
+            }
+            return url;
+        }
+
+        $(document).on('click', '.js-lims-subject-delete', function (e) {
+            e.preventDefault();
+
+            var $btn = $(this);
+            var subjectId = parseInt($btn.data('subject-id'), 10) || 0;
+            var deleteUrl = $btn.attr('href');
+
+            if (!subjectId || !deleteUrl) {
+                return;
+            }
+
+            $.getJSON("<?php echo admin_url('lims/subjects/delete_dependencies/'); ?>" + subjectId, function (resp) {
+                if (!resp || !resp.success) {
+                    if (confirm("Delete subject?")) {
+                        window.location.href = deleteUrl;
+                    }
+                    return;
+                }
+
+                if (!resp.has_any) {
+                    if (confirm("Delete subject?")) {
+                        window.location.href = deleteUrl;
+                    }
+                    return;
+                }
+
+                var counts = resp.counts || {};
+                var msg = "This subject has linked data:\n"
+                    + "- Orders: " + (counts.orders || 0) + "\n"
+                    + "- Contracts: " + (counts.contracts || 0) + "\n"
+                    + "- Appointments: " + (counts.appointments || 0) + "\n"
+                    + "- Tests: " + (counts.tests || 0) + "\n"
+                    + "- Samples: " + (counts.samples || 0) + "\n\n"
+                    + "OK = Delete all linked records\n"
+                    + "Cancel = Transfer linked records to another Subject";
+
+                if (confirm(msg)) {
+                    window.location.href = buildDeleteUrl(subjectId, 'delete_all');
+                    return;
+                }
+
+                var target = prompt("Enter target Subject ID to transfer linked records:");
+                if (target && parseInt(target, 10) > 0) {
+                    window.location.href = buildDeleteUrl(subjectId, 'transfer', parseInt(target, 10));
+                }
+            }).fail(function () {
+                if (confirm("Delete subject?")) {
+                    window.location.href = deleteUrl;
+                }
+            });
+        });
+    })();
+</script>

@@ -607,5 +607,111 @@ class Subjects extends AdminController
 		die;
 	}
 
+	public function delete($id)
+	{
+		if (!has_permission('lims', '', 'manage_orders') && !has_permission('lims', '', 'admin')) {
+			access_denied('lims');
+		}
+
+		$id = (int)$id;
+		if ($id <= 0) {
+			return $this->redirect_after_subject_delete();
+		}
+
+		$subject = $this->subjects_model->get($id);
+		if (!$subject) {
+			set_alert('warning', _l('not_found'));
+			return $this->redirect_after_subject_delete();
+		}
+
+		$mode = (string)$this->input->get('mode');
+		if ($mode === '') {
+			$mode = (string)$this->input->post('mode');
+		}
+
+		$targetSubjectId = (int)$this->input->post('target_subject_id');
+		if ($targetSubjectId <= 0) {
+			$targetSubjectId = (int)$this->input->get('target_subject_id');
+		}
+
+		$counts = $this->subjects_model->get_linked_counts($id);
+		$hasLinks = array_sum(array_map('intval', $counts)) > 0;
+
+		if (!$hasLinks) {
+			$ok = $this->subjects_model->delete_subject_only($id);
+			set_alert($ok ? 'success' : 'danger', $ok ? (_l('deleted', _l('lims_subject')) ?: 'Subject deleted.') : (_l('problem_deleting', _l('lims_subject')) ?: 'Could not delete subject.'));
+			return $this->redirect_after_subject_delete();
+		}
+
+		if ($mode === 'delete_all') {
+			$ok = $this->subjects_model->delete_with_links($id);
+			set_alert($ok ? 'success' : 'danger', $ok ? (_l('deleted', _l('lims_subject')) ?: 'Subject and linked records deleted.') : (_l('problem_deleting', _l('lims_subject')) ?: 'Could not delete subject.'));
+			return $this->redirect_after_subject_delete();
+		}
+
+		if ($mode === 'transfer') {
+			if ($targetSubjectId <= 0 || $targetSubjectId === $id || !$this->subjects_model->get($targetSubjectId)) {
+				set_alert('warning', _l('lims_error_generic') ?: 'Please select a valid target subject.');
+				return $this->redirect_after_subject_delete();
+			}
+
+			$moved = $this->subjects_model->transfer_links($id, $targetSubjectId);
+			if (!$moved) {
+				set_alert('danger', _l('lims_error_generic') ?: 'Could not transfer linked records.');
+				return $this->redirect_after_subject_delete();
+			}
+
+			$ok = $this->subjects_model->delete_subject_only($id);
+			set_alert($ok ? 'success' : 'danger', $ok ? (_l('deleted', _l('lims_subject')) ?: 'Subject deleted after transfer.') : (_l('problem_deleting', _l('lims_subject')) ?: 'Subject transfer succeeded but delete failed.'));
+			return $this->redirect_after_subject_delete();
+		}
+
+		$details = 'Orders: ' . (int)$counts['orders']
+			. ', Contracts: ' . (int)$counts['contracts']
+			. ', Appointments: ' . (int)$counts['appointments']
+			. ', Tests: ' . (int)$counts['tests']
+			. ', Samples: ' . (int)$counts['samples'];
+		set_alert('warning', 'This subject has linked records. Choose "Delete all" or "Transfer". ' . $details);
+
+		return $this->redirect_after_subject_delete();
+	}
+
+	public function delete_dependencies($id)
+	{
+		if (!is_staff_logged_in() || (!has_permission('lims', '', 'manage_orders') && !has_permission('lims', '', 'admin'))) {
+			echo json_encode(['success' => false, 'message' => 'Access denied.']);
+			die;
+		}
+
+		$id = (int)$id;
+		$subject = $this->subjects_model->get($id);
+
+		if (!$subject) {
+			echo json_encode(['success' => false, 'message' => 'Subject not found.']);
+			die;
+		}
+
+		$counts = $this->subjects_model->get_linked_counts($id);
+
+		echo json_encode([
+			'success' => true,
+			'counts'  => $counts,
+			'has_any' => array_sum(array_map('intval', $counts)) > 0,
+		]);
+		die;
+	}
+
+	private function redirect_after_subject_delete()
+	{
+		$returnTo = (string)$this->input->get('return_to');
+		$clientId = (int)$this->input->get('client_id');
+
+		if ($returnTo === 'client_tab' && $clientId > 0) {
+			return redirect(admin_url('clients/client/' . $clientId . '?group=lims-subjects'));
+		}
+
+		return redirect(admin_url('lims/subjects'));
+	}
+
 
 }

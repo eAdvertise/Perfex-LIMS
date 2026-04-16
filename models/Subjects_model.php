@@ -94,6 +94,235 @@ class Subjects_model extends App_Model
             ->result();
     }
 
+    /**
+     * Counts linked records that block a safe subject delete.
+     */
+    public function get_linked_counts($subject_id)
+    {
+        $subject_id = (int)$subject_id;
+        $p          = db_prefix();
+
+        $counts = [
+            'orders'       => 0,
+            'contracts'    => 0,
+            'appointments' => 0,
+            'tests'        => 0,
+            'samples'      => 0,
+        ];
+
+        if ($subject_id <= 0) {
+            return $counts;
+        }
+
+        // Orders
+        if ($this->db->table_exists($p . 'lims_orders') && $this->db->field_exists('subject_id', $p . 'lims_orders')) {
+            $counts['orders'] = (int)$this->db
+                ->where('subject_id', $subject_id)
+                ->count_all_results($p . 'lims_orders');
+        }
+
+        // Contracts (only if subject-aware schema exists)
+        if ($this->db->table_exists($p . 'lims_contracts') && $this->db->field_exists('subject_id', $p . 'lims_contracts')) {
+            $counts['contracts'] = (int)$this->db
+                ->where('subject_id', $subject_id)
+                ->count_all_results($p . 'lims_contracts');
+        }
+
+        // Appointments
+        if ($this->db->table_exists($p . 'lims_appointments') && $this->db->field_exists('subject_id', $p . 'lims_appointments')) {
+            $counts['appointments'] = (int)$this->db
+                ->where('subject_id', $subject_id)
+                ->count_all_results($p . 'lims_appointments');
+        }
+
+        // Samples
+        if ($this->db->table_exists($p . 'lims_samples') && $this->db->field_exists('subject_id', $p . 'lims_samples')) {
+            $counts['samples'] = (int)$this->db
+                ->where('subject_id', $subject_id)
+                ->count_all_results($p . 'lims_samples');
+        }
+
+        // Tests: prefer direct subject_id, fallback μέσω samples
+        if ($this->db->table_exists($p . 'lims_tests')) {
+            if ($this->db->field_exists('subject_id', $p . 'lims_tests')) {
+                $counts['tests'] = (int)$this->db
+                    ->where('subject_id', $subject_id)
+                    ->count_all_results($p . 'lims_tests');
+            } elseif ($this->db->field_exists('sample_id', $p . 'lims_tests') && $this->db->table_exists($p . 'lims_samples')) {
+                $sampleIds = $this->db
+                    ->select('id')
+                    ->where('subject_id', $subject_id)
+                    ->get($p . 'lims_samples')
+                    ->result();
+
+                if (!empty($sampleIds)) {
+                    $ids = array_map(function ($r) {
+                        return (int)$r->id;
+                    }, $sampleIds);
+
+                    if (!empty($ids)) {
+                        $this->db->where_in('sample_id', $ids);
+                        $counts['tests'] = (int)$this->db->count_all_results($p . 'lims_tests');
+                    }
+                }
+            }
+        }
+
+        return $counts;
+    }
+
+    public function has_linked_records($subject_id)
+    {
+        $counts = $this->get_linked_counts($subject_id);
+        foreach ($counts as $v) {
+            if ((int)$v > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function delete_subject_only($subject_id)
+    {
+        $subject_id = (int)$subject_id;
+        if ($subject_id <= 0) {
+            return false;
+        }
+
+        $this->db->where('id', $subject_id)->delete($this->table);
+
+        return $this->db->affected_rows() > 0;
+    }
+
+    /**
+     * Move linked entities from one subject to another.
+     */
+    public function transfer_links($from_subject_id, $to_subject_id)
+    {
+        $from_subject_id = (int)$from_subject_id;
+        $to_subject_id   = (int)$to_subject_id;
+        $p               = db_prefix();
+
+        if ($from_subject_id <= 0 || $to_subject_id <= 0 || $from_subject_id === $to_subject_id) {
+            return false;
+        }
+
+        $this->db->trans_begin();
+
+        $map = [
+            $p . 'lims_orders',
+            $p . 'lims_appointments',
+            $p . 'lims_samples',
+            $p . 'lims_contracts',
+        ];
+
+        foreach ($map as $table) {
+            if ($this->db->table_exists($table) && $this->db->field_exists('subject_id', $table)) {
+                $this->db->where('subject_id', $from_subject_id)
+                    ->update($table, ['subject_id' => $to_subject_id]);
+            }
+        }
+
+        if ($this->db->table_exists($p . 'lims_tests') && $this->db->field_exists('subject_id', $p . 'lims_tests')) {
+            $this->db->where('subject_id', $from_subject_id)
+                ->update($p . 'lims_tests', ['subject_id' => $to_subject_id]);
+        }
+
+        if ($this->db->trans_status() === false) {
+            $this->db->trans_rollback();
+            return false;
+        }
+
+        $this->db->trans_commit();
+        return true;
+    }
+
+    /**
+     * Hard delete linked entities + subject in one transaction.
+     */
+    public function delete_with_links($subject_id)
+    {
+        $subject_id = (int)$subject_id;
+        $p          = db_prefix();
+
+        if ($subject_id <= 0) {
+            return false;
+        }
+
+        $this->db->trans_begin();
+
+        // Tests first (direct + via samples)
+        if ($this->db->table_exists($p . 'lims_tests')) {
+            if ($this->db->field_exists('subject_id', $p . 'lims_tests')) {
+                $this->db->where('subject_id', $subject_id)->delete($p . 'lims_tests');
+            } elseif ($this->db->field_exists('sample_id', $p . 'lims_tests') && $this->db->table_exists($p . 'lims_samples')) {
+                $sampleIds = $this->db->select('id')->where('subject_id', $subject_id)->get($p . 'lims_samples')->result();
+                if (!empty($sampleIds)) {
+                    $ids = array_map(function ($r) {
+                        return (int)$r->id;
+                    }, $sampleIds);
+                    if (!empty($ids)) {
+                        $this->db->where_in('sample_id', $ids)->delete($p . 'lims_tests');
+                    }
+                }
+            }
+        }
+
+        if ($this->db->table_exists($p . 'lims_appointments') && $this->db->field_exists('subject_id', $p . 'lims_appointments')) {
+            $this->db->where('subject_id', $subject_id)->delete($p . 'lims_appointments');
+        }
+
+        if ($this->db->table_exists($p . 'lims_samples') && $this->db->field_exists('subject_id', $p . 'lims_samples')) {
+            $this->db->where('subject_id', $subject_id)->delete($p . 'lims_samples');
+        }
+
+        if ($this->db->table_exists($p . 'lims_contracts') && $this->db->field_exists('subject_id', $p . 'lims_contracts')) {
+            $contractIds = $this->db->select('id')->where('subject_id', $subject_id)->get($p . 'lims_contracts')->result();
+            if (!empty($contractIds) && $this->db->table_exists($p . 'lims_contract_prices')) {
+                $ids = array_map(function ($r) {
+                    return (int)$r->id;
+                }, $contractIds);
+                if (!empty($ids) && $this->db->field_exists('contract_id', $p . 'lims_contract_prices')) {
+                    $this->db->where_in('contract_id', $ids)->delete($p . 'lims_contract_prices');
+                }
+            }
+            $this->db->where('subject_id', $subject_id)->delete($p . 'lims_contracts');
+        }
+
+        if ($this->db->table_exists($p . 'lims_orders') && $this->db->field_exists('subject_id', $p . 'lims_orders')) {
+            $orderIds = $this->db->select('id')->where('subject_id', $subject_id)->get($p . 'lims_orders')->result();
+            if (!empty($orderIds)) {
+                $ids = array_map(function ($r) {
+                    return (int)$r->id;
+                }, $orderIds);
+                if (!empty($ids)) {
+                    if ($this->db->table_exists($p . 'lims_order_items') && $this->db->field_exists('order_id', $p . 'lims_order_items')) {
+                        $this->db->where_in('order_id', $ids)->delete($p . 'lims_order_items');
+                    }
+                    if ($this->db->table_exists($p . 'lims_order_activity') && $this->db->field_exists('order_id', $p . 'lims_order_activity')) {
+                        $this->db->where_in('order_id', $ids)->delete($p . 'lims_order_activity');
+                    }
+                    if ($this->db->table_exists($p . 'lims_billing_links') && $this->db->field_exists('order_id', $p . 'lims_billing_links')) {
+                        $this->db->where_in('order_id', $ids)->delete($p . 'lims_billing_links');
+                    }
+                }
+            }
+
+            $this->db->where('subject_id', $subject_id)->delete($p . 'lims_orders');
+        }
+
+        $this->db->where('id', $subject_id)->delete($this->table);
+
+        if ($this->db->trans_status() === false) {
+            $this->db->trans_rollback();
+            return false;
+        }
+
+        $this->db->trans_commit();
+        return true;
+    }
+
    /**
      * Δημιουργία Subject
      */
