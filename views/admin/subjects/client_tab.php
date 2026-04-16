@@ -14,9 +14,13 @@ $subjects = $CI->db
     ->select('id, internal_code, subject_type, subject_name, first_name, last_name, email, phone, active, created_at')
     ->from(db_prefix() . 'lims_subjects')
     ->where('client_id', (int)$client_id)
-    ->order_by('id', 'DESC')
-    ->get()
-    ->result();
+    ->order_by('id', 'DESC');
+
+if ($CI->db->field_exists('is_deleted', db_prefix() . 'lims_subjects')) {
+    $CI->db->where('is_deleted', 0);
+}
+
+$subjects = $CI->db->get()->result();
 ?>
 
 <div class="row">
@@ -143,16 +147,29 @@ $subjects = $CI->db
                     + "- Tests: " + (counts.tests || 0) + "\n"
                     + "- Samples: " + (counts.samples || 0) + "\n\n"
                     + "OK = Delete all linked records\n"
-                    + "Cancel = Transfer linked records to another Subject";
+                    + "Cancel = More options (Transfer / Archive)";
 
                 if (confirm(msg)) {
                     window.location.href = buildDeleteUrl(subjectId, 'delete_all');
                     return;
                 }
 
-                var target = prompt("Enter target Subject ID to transfer linked records:");
-                if (target && parseInt(target, 10) > 0) {
-                    window.location.href = buildDeleteUrl(subjectId, 'transfer', parseInt(target, 10));
+                var action = prompt("Type action: transfer / archive");
+                if (!action) {
+                    return;
+                }
+
+                action = (action + '').toLowerCase().trim();
+                if (action === 'archive') {
+                    window.location.href = buildDeleteUrl(subjectId, 'archive');
+                    return;
+                }
+
+                if (action === 'transfer') {
+                    var target = prompt("Enter target Subject ID to transfer linked records:");
+                    if (target && parseInt(target, 10) > 0) {
+                        window.location.href = buildDeleteUrl(subjectId, 'transfer', parseInt(target, 10));
+                    }
                 }
             }).fail(function () {
                 if (confirm("Delete subject?")) {

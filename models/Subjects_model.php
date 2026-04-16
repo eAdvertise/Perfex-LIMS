@@ -55,6 +55,22 @@ class Subjects_model extends App_Model
         return $subject;
     }
 
+    public function is_marked_deleted($id)
+    {
+        $id = (int)$id;
+        if ($id <= 0) {
+            return false;
+        }
+
+        if (!$this->db->field_exists('is_deleted', $this->table)) {
+            return false;
+        }
+
+        $row = $this->db->select('is_deleted')->get_where($this->table, ['id' => $id])->row();
+
+        return $row ? ((int)$row->is_deleted === 1) : false;
+    }
+
     public function get_client($subject)
     {
         if (!$subject || empty($subject->client_id)) {
@@ -193,6 +209,38 @@ class Subjects_model extends App_Model
         $this->db->where('id', $subject_id)->delete($this->table);
 
         return $this->db->affected_rows() > 0;
+    }
+
+    /**
+     * Soft delete (archive) a subject while keeping linked records intact.
+     */
+    public function mark_as_deleted($subject_id, $staff_id = null)
+    {
+        $subject_id = (int)$subject_id;
+        $staff_id   = (int)$staff_id;
+
+        if ($subject_id <= 0 || !$this->db->field_exists('is_deleted', $this->table)) {
+            return false;
+        }
+
+        $update = [
+            'is_deleted' => 1,
+            'active'     => 0,
+        ];
+
+        if ($this->db->field_exists('deleted_at', $this->table)) {
+            $update['deleted_at'] = date('Y-m-d H:i:s');
+        }
+        if ($this->db->field_exists('deleted_by', $this->table)) {
+            $update['deleted_by'] = $staff_id > 0 ? $staff_id : null;
+        }
+        if ($this->db->field_exists('updated_at', $this->table)) {
+            $update['updated_at'] = date('Y-m-d H:i:s');
+        }
+
+        $this->db->where('id', $subject_id)->update($this->table, $update);
+
+        return $this->db->affected_rows() >= 0;
     }
 
     /**
