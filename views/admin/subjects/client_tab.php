@@ -206,6 +206,12 @@ $subjects = $CI->db->get()->result();
             var subjectId = parseInt($btn.data('subject-id'), 10) || 0;
             var deleteUrl = $btn.attr('href');
 
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.js-lims-subject-delete');
+            if (!btn) return;
+            e.preventDefault();
+            var subjectId = parseInt(btn.getAttribute('data-subject-id') || '0', 10) || 0;
+            var deleteUrl = btn.getAttribute('href') || '';
             if (!subjectId || !deleteUrl) {
                 return;
             }
