@@ -151,126 +151,131 @@ $subjects = $CI->db->get()->result();
 </div>
 
 <script>
-    (function () {
-        "use strict";
-        var jq = window.jQuery || window.$;
-        if (!jq) {
+(function () {
+    "use strict";
+
+    var jq = window.jQuery || window.$;
+    if (!jq) {
+        return;
+    }
+
+    var state = {
+        subjectId: 0,
+        deleteUrl: '',
+        hasLinks: false
+    };
+
+    var $modal = jq('#limsSubjectDeleteModal');
+    var $summary = $modal.find('.js-delete-modal-summary');
+    var $countsWrap = $modal.find('.js-delete-modal-counts');
+    var $transferWrap = $modal.find('.js-transfer-target-wrap');
+    var $transferInput = $modal.find('#subject-transfer-target-id');
+
+    function buildDeleteUrl(subjectId, mode, targetId) {
+        var url = "<?php echo admin_url('lims/subjects/delete/'); ?>" + subjectId
+            + "?mode=" + encodeURIComponent(mode)
+            + "&return_to=client_tab"
+            + "&client_id=<?php echo (int) $client_id; ?>";
+
+        if (targetId) {
+            url += "&target_subject_id=" + encodeURIComponent(targetId);
+        }
+
+        return url;
+    }
+
+    function setCounts(counts) {
+        counts = counts || {};
+        $countsWrap.find('[data-k="orders"]').text(parseInt(counts.orders || 0, 10));
+        $countsWrap.find('[data-k="contracts"]').text(parseInt(counts.contracts || 0, 10));
+        $countsWrap.find('[data-k="appointments"]').text(parseInt(counts.appointments || 0, 10));
+        $countsWrap.find('[data-k="tests"]').text(parseInt(counts.tests || 0, 10));
+        $countsWrap.find('[data-k="samples"]').text(parseInt(counts.samples || 0, 10));
+    }
+
+    function toggleTransferInput() {
+        var mode = $modal.find('input[name="subject_delete_action"]:checked').val();
+        if (mode === 'transfer' && state.hasLinks) {
+            $transferWrap.removeClass('hide');
+        } else {
+            $transferWrap.addClass('hide');
+            $transferInput.val('');
+        }
+    }
+
+    jq(document).on('click', '.js-lims-subject-delete', function (e) {
+        e.preventDefault();
+
+        var $btn = jq(this);
+        var subjectId = parseInt($btn.data('subject-id'), 10) || 0;
+        var deleteUrl = $btn.attr('href') || '';
+
+        if (!subjectId || !deleteUrl) {
             return;
         }
-        var state = {
-            subjectId: 0,
-            deleteUrl: '',
-            hasLinks: false
-        };
 
-        var $modal = jq('#limsSubjectDeleteModal');
-        var $summary = $modal.find('.js-delete-modal-summary');
-        var $countsWrap = $modal.find('.js-delete-modal-counts');
-        var $transferWrap = $modal.find('.js-transfer-target-wrap');
-        var $transferInput = $modal.find('#subject-transfer-target-id');
+        state.subjectId = subjectId;
+        state.deleteUrl = deleteUrl;
+        state.hasLinks = false;
 
-        function buildDeleteUrl(subjectId, mode, targetId) {
-            var url = "<?php echo admin_url('lims/subjects/delete/'); ?>" + subjectId
-                + "?mode=" + encodeURIComponent(mode)
-                + "&return_to=client_tab"
-                + "&client_id=<?php echo (int)$client_id; ?>";
-            if (targetId) {
-                url += "&target_subject_id=" + encodeURIComponent(targetId);
-            }
-            return url;
-        }
-
-        function setCounts(counts) {
-            counts = counts || {};
-            $countsWrap.find('[data-k="orders"]').text(parseInt(counts.orders || 0, 10));
-            $countsWrap.find('[data-k="contracts"]').text(parseInt(counts.contracts || 0, 10));
-            $countsWrap.find('[data-k="appointments"]').text(parseInt(counts.appointments || 0, 10));
-            $countsWrap.find('[data-k="tests"]').text(parseInt(counts.tests || 0, 10));
-            $countsWrap.find('[data-k="samples"]').text(parseInt(counts.samples || 0, 10));
-        }
-
-        function toggleTransferInput() {
-            var mode = $modal.find('input[name="subject_delete_action"]:checked').val();
-            if (mode === 'transfer' && state.hasLinks) {
-                $transferWrap.removeClass('hide');
-            } else {
-                $transferWrap.addClass('hide');
-                $transferInput.val('');
-            }
-        }
-
-        jq(document).on('click', '.js-lims-subject-delete', function (e) {
-            e.preventDefault();
-
-            var $btn = jq(this);
-            var subjectId = parseInt($btn.data('subject-id'), 10) || 0;
-            var deleteUrl = $btn.attr('href');
-
-            if (!subjectId || !deleteUrl) {
-                return;
-            }
-            state.subjectId = subjectId;
-            state.deleteUrl = deleteUrl;
-            state.hasLinks = false;
-
-            jq.getJSON("<?php echo admin_url('lims/subjects/delete_dependencies/'); ?>" + subjectId, function (resp) {
-                if (!resp || !resp.success) {
-                    $summary.text("Δεν βρέθηκαν πληροφορίες για dependencies. Θες να γίνει απλό delete;");
-                    $countsWrap.addClass('hide');
-                    $modal.modal('show');
-                    return;
-                }
-
-                if (!resp.has_any) {
-                    $summary.text("Το Subject δεν έχει συνδεδεμένα στοιχεία. Μπορεί να διαγραφεί άμεσα.");
-                    $countsWrap.addClass('hide');
-                    $modal.modal('show');
-                    return;
-                }
-
-                state.hasLinks = true;
-                $summary.text("Το Subject έχει συνδεδεμένα στοιχεία. Διάλεξε ενέργεια:");
-                setCounts(resp.counts || {});
-                $countsWrap.removeClass('hide');
-                $modal.find('input[name="subject_delete_action"][value="delete_all"]').prop('checked', true);
-                toggleTransferInput();
-                $modal.modal('show');
-            }).fail(function () {
-                $summary.text("Δεν ήταν δυνατός ο έλεγχος dependencies. Θες να γίνει απλό delete;");
+        jq.getJSON("<?php echo admin_url('lims/subjects/delete_dependencies/'); ?>" + subjectId, function (resp) {
+            if (!resp || !resp.success) {
+                $summary.text('Δεν βρέθηκαν πληροφορίες για dependencies. Θες να γίνει απλό delete;');
                 $countsWrap.addClass('hide');
                 $modal.modal('show');
-            });
+                return;
+            }
+
+            if (!resp.has_any) {
+                $summary.text('Το Subject δεν έχει συνδεδεμένα στοιχεία. Μπορεί να διαγραφεί άμεσα.');
+                $countsWrap.addClass('hide');
+                $modal.modal('show');
+                return;
+            }
+
+            state.hasLinks = true;
+            $summary.text('Το Subject έχει συνδεδεμένα στοιχεία. Διάλεξε ενέργεια:');
+            setCounts(resp.counts || {});
+            $countsWrap.removeClass('hide');
+            $modal.find('input[name="subject_delete_action"][value="delete_all"]').prop('checked', true);
+            toggleTransferInput();
+            $modal.modal('show');
+        }).fail(function () {
+            $summary.text('Δεν ήταν δυνατός ο έλεγχος dependencies. Θες να γίνει απλό delete;');
+            $countsWrap.addClass('hide');
+            $modal.modal('show');
         });
+    });
 
-        $modal.on('change', 'input[name="subject_delete_action"]', toggleTransferInput);
+    $modal.on('change', 'input[name="subject_delete_action"]', toggleTransferInput);
 
-        jq(document).on('click', '.js-confirm-subject-delete', function () {
-            if (!state.subjectId || !state.deleteUrl) {
+    jq(document).on('click', '.js-confirm-subject-delete', function () {
+        if (!state.subjectId || !state.deleteUrl) {
+            return;
+        }
+
+        if (!state.hasLinks) {
+            window.location.href = state.deleteUrl;
+            return;
+        }
+
+        var mode = $modal.find('input[name="subject_delete_action"]:checked').val() || 'delete_all';
+        if (mode === 'transfer') {
+            var target = parseInt($transferInput.val(), 10) || 0;
+            if (target <= 0 || target === state.subjectId) {
+                alert('Βάλε έγκυρο Target Subject ID.');
                 return;
             }
+            window.location.href = buildDeleteUrl(state.subjectId, 'transfer', target);
+            return;
+        }
 
-            if (!state.hasLinks) {
-                window.location.href = state.deleteUrl;
-                return;
-            }
+        if (mode === 'archive') {
+            window.location.href = buildDeleteUrl(state.subjectId, 'archive');
+            return;
+        }
 
-            var mode = $modal.find('input[name="subject_delete_action"]:checked').val() || 'delete_all';
-            if (mode === 'transfer') {
-                var target = parseInt($transferInput.val(), 10) || 0;
-                if (target <= 0 || target === state.subjectId) {
-                    alert('Βάλε έγκυρο Target Subject ID.');
-                    return;
-                }
-                window.location.href = buildDeleteUrl(state.subjectId, 'transfer', target);
-                return;
-            }
-
-            if (mode === 'archive') {
-                window.location.href = buildDeleteUrl(state.subjectId, 'archive');
-                return;
-            }
-
-            window.location.href = buildDeleteUrl(state.subjectId, 'delete_all');
-        });
-    })();
+        window.location.href = buildDeleteUrl(state.subjectId, 'delete_all');
+    });
+})();
 </script>
