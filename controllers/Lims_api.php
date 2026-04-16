@@ -229,7 +229,9 @@ class Lims_api extends CI_Controller
             }
         } else {
             if (method_exists($this->subjects_model, 'generate_internal_code')) {
-                $subData['subject_uid'] = function_exists('lims_uuid_v4') ? lims_uuid_v4() : $this->uuid_v4_fallback();
+                $subData['internal_code'] = (string)$this->subjects_model->generate_internal_code();
+                $next = (int)get_option('lims_subject_next_number');
+                update_option('lims_subject_next_number', ($next > 0 ? $next : 1) + 1);
             }
         }
 
