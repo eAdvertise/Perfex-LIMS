@@ -159,12 +159,17 @@ $subjects = $CI->db->get()->result();
         var $ = jQueryRef;
         var $modal = $('#limsSubjectDeleteModal');
 
+        var jq = window.jQuery || window.$;
+        if (!jq) {
+            return;
+        }
         var state = {
             subjectId: 0,
             deleteUrl: '',
             hasLinks: false
         };
 
+        var $modal = jq('#limsSubjectDeleteModal');
         var $summary = $modal.find('.js-delete-modal-summary');
         var $countsWrap = $modal.find('.js-delete-modal-counts');
         var $transferWrap = $modal.find('.js-transfer-target-wrap');
@@ -192,6 +197,15 @@ $subjects = $CI->db->get()->result();
 
         function toggleTransferInput() {
             var mode = $modal.find('input[name="subject_delete_action"]:checked').val() || 'delete_all';
+            $countsWrap.find('[data-k="orders"]').text(parseInt(counts.orders || 0, 10));
+            $countsWrap.find('[data-k="contracts"]').text(parseInt(counts.contracts || 0, 10));
+            $countsWrap.find('[data-k="appointments"]').text(parseInt(counts.appointments || 0, 10));
+            $countsWrap.find('[data-k="tests"]').text(parseInt(counts.tests || 0, 10));
+            $countsWrap.find('[data-k="samples"]').text(parseInt(counts.samples || 0, 10));
+        }
+
+        function toggleTransferInput() {
+            var mode = $modal.find('input[name="subject_delete_action"]:checked').val();
             if (mode === 'transfer' && state.hasLinks) {
                 $transferWrap.removeClass('hide');
             } else {
@@ -205,6 +219,19 @@ $subjects = $CI->db->get()->result();
             var $btn = $(this);
             var subjectId = parseInt($btn.data('subject-id') || 0, 10) || 0;
             var deleteUrl = $btn.attr('href') || '';
+        jq(document).on('click', '.js-lims-subject-delete', function (e) {
+            e.preventDefault();
+
+            var $btn = jq(this);
+            var subjectId = parseInt($btn.data('subject-id'), 10) || 0;
+            var deleteUrl = $btn.attr('href');
+
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.js-lims-subject-delete');
+            if (!btn) return;
+            e.preventDefault();
+            var subjectId = parseInt(btn.getAttribute('data-subject-id') || '0', 10) || 0;
+            var deleteUrl = btn.getAttribute('href') || '';
             if (!subjectId || !deleteUrl) {
                 return;
             }
@@ -212,7 +239,7 @@ $subjects = $CI->db->get()->result();
             state.deleteUrl = deleteUrl;
             state.hasLinks = false;
 
-            $.getJSON("<?php echo admin_url('lims/subjects/delete_dependencies/'); ?>" + subjectId, function (resp) {
+            jq.getJSON("<?php echo admin_url('lims/subjects/delete_dependencies/'); ?>" + subjectId, function (resp) {
                 if (!resp || !resp.success) {
                     $summary.text("Δεν βρέθηκαν πληροφορίες για dependencies. Θες να γίνει απλό delete;");
                     $countsWrap.addClass('hide');
@@ -244,6 +271,7 @@ $subjects = $CI->db->get()->result();
         $modal.on('change', 'input[name="subject_delete_action"]', toggleTransferInput);
 
         $(document).on('click', '.js-confirm-subject-delete', function () {
+        jq(document).on('click', '.js-confirm-subject-delete', function () {
             if (!state.subjectId || !state.deleteUrl) {
                 return;
             }
