@@ -88,6 +88,10 @@
                 <p class="text-muted js-delete-modal-summary"></p>
 
                 <div class="js-delete-modal-counts hide">
+                    <div class="alert alert-warning">
+                        Η επιλογή <strong>Delete all</strong> θα διαγράψει και τα σχετικά
+                        <strong>Appointments, Samples, Orders, Tests</strong> και τα child δεδομένα τους.
+                    </div>
                     <ul class="list-unstyled mtop10">
                         <li><strong>Orders:</strong> <span data-k="orders">0</span></li>
                         <li><strong>Contracts:</strong> <span data-k="contracts">0</span></li>
@@ -100,7 +104,7 @@
 
                     <div class="radio radio-primary">
                         <input type="radio" id="subject-action-delete-all" name="subject_delete_action" value="delete_all" checked>
-                        <label for="subject-action-delete-all">Delete subject + όλα τα συνδεδεμένα στοιχεία</label>
+                        <label for="subject-action-delete-all">Delete subject + όλα τα συνδεδεμένα στοιχεία (appointments/samples/orders/tests)</label>
                     </div>
                     <div class="radio radio-primary">
                         <input type="radio" id="subject-action-transfer" name="subject_delete_action" value="transfer">
