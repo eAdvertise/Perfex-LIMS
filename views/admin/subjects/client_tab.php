@@ -14,9 +14,13 @@ $subjects = $CI->db
     ->select('id, internal_code, subject_type, subject_name, first_name, last_name, email, phone, active, created_at')
     ->from(db_prefix() . 'lims_subjects')
     ->where('client_id', (int)$client_id)
-    ->order_by('id', 'DESC')
-    ->get()
-    ->result();
+    ->order_by('id', 'DESC');
+
+if ($CI->db->field_exists('is_deleted', db_prefix() . 'lims_subjects')) {
+    $CI->db->where('is_deleted', 0);
+}
+
+$subjects = $CI->db->get()->result();
 ?>
 
 <div class="row">
@@ -94,9 +98,99 @@ $subjects = $CI->db
     </div>
 </div>
 
+<div class="modal fade" id="limsSubjectDeleteModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">Delete Subject</h4>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted js-delete-modal-summary"></p>
+
+                <div class="js-delete-modal-counts hide">
+                    <div class="alert alert-warning">
+                        Η επιλογή <strong>Delete all</strong> θα διαγράψει και τα σχετικά
+                        <strong>Appointments, Samples, Orders, Tests</strong> και τα child δεδομένα τους.
+                    </div>
+                    <ul class="list-unstyled mtop10">
+                        <li><strong>Orders:</strong> <span data-k="orders">0</span></li>
+                        <li><strong>Contracts:</strong> <span data-k="contracts">0</span></li>
+                        <li><strong>Appointments:</strong> <span data-k="appointments">0</span></li>
+                        <li><strong>Tests:</strong> <span data-k="tests">0</span></li>
+                        <li><strong>Samples:</strong> <span data-k="samples">0</span></li>
+                    </ul>
+
+                    <hr/>
+
+                    <div class="radio radio-primary">
+                        <input type="radio" id="subject-action-delete-all" name="subject_delete_action" value="delete_all" checked>
+                        <label for="subject-action-delete-all">Delete subject + όλα τα συνδεδεμένα στοιχεία (appointments/samples/orders/tests)</label>
+                    </div>
+                    <div class="radio radio-primary">
+                        <input type="radio" id="subject-action-transfer" name="subject_delete_action" value="transfer">
+                        <label for="subject-action-transfer">Μεταφορά συνδεδεμένων στοιχείων σε άλλο Subject και διαγραφή</label>
+                    </div>
+                    <div class="radio radio-primary">
+                        <input type="radio" id="subject-action-archive" name="subject_delete_action" value="archive">
+                        <label for="subject-action-archive">Archive (Mark as Deleted) και κράτα ιστορικό</label>
+                    </div>
+
+                    <div class="form-group mtop10 js-transfer-target-wrap hide">
+                        <label for="subject-transfer-target-id">Target Subject ID</label>
+                        <input type="number" min="1" class="form-control" id="subject-transfer-target-id" placeholder="π.χ. 123">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger js-confirm-subject-delete">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     (function () {
         "use strict";
+        var modal = document.getElementById('limsSubjectDeleteModal');
+        if (!modal) {
+            return;
+        }
+
+        var state = {
+            subjectId: 0,
+            deleteUrl: '',
+            hasLinks: false
+        };
+
+        var summaryEl = modal.querySelector('.js-delete-modal-summary');
+        var countsWrap = modal.querySelector('.js-delete-modal-counts');
+        var transferWrap = modal.querySelector('.js-transfer-target-wrap');
+        var transferInput = modal.querySelector('#subject-transfer-target-id');
+        var confirmBtn = modal.querySelector('.js-confirm-subject-delete');
+
+        function showModal() {
+            modal.style.display = 'block';
+            modal.classList.add('in');
+            document.body.classList.add('modal-open');
+            if (!document.querySelector('.modal-backdrop')) {
+                var backdrop = document.createElement('div');
+                backdrop.className = 'modal-backdrop fade in';
+                backdrop.addEventListener('click', hideModal);
+                document.body.appendChild(backdrop);
+            }
+        }
+
+        function hideModal() {
+            modal.style.display = 'none';
+            modal.classList.remove('in');
+            document.body.classList.remove('modal-open');
+            var backdrop = document.querySelector('.modal-backdrop');
+            if (backdrop) {
+                backdrop.remove();
+            }
+        }
 
         function buildDeleteUrl(subjectId, mode, targetId) {
             var url = "<?php echo admin_url('lims/subjects/delete/'); ?>" + subjectId
@@ -109,55 +203,115 @@ $subjects = $CI->db
             return url;
         }
 
-        $(document).on('click', '.js-lims-subject-delete', function (e) {
+        function setCounts(counts) {
+            counts = counts || {};
+            modal.querySelector('[data-k="orders"]').textContent = parseInt(counts.orders || 0, 10);
+            modal.querySelector('[data-k="contracts"]').textContent = parseInt(counts.contracts || 0, 10);
+            modal.querySelector('[data-k="appointments"]').textContent = parseInt(counts.appointments || 0, 10);
+            modal.querySelector('[data-k="tests"]').textContent = parseInt(counts.tests || 0, 10);
+            modal.querySelector('[data-k="samples"]').textContent = parseInt(counts.samples || 0, 10);
+        }
+
+        function toggleTransferInput() {
+            var checked = modal.querySelector('input[name="subject_delete_action"]:checked');
+            var mode = checked ? checked.value : 'delete_all';
+            if (mode === 'transfer' && state.hasLinks) {
+                transferWrap.classList.remove('hide');
+            } else {
+                transferWrap.classList.add('hide');
+                transferInput.value = '';
+            }
+        }
+
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.js-lims-subject-delete');
+            if (!btn) return;
             e.preventDefault();
-
-            var $btn = $(this);
-            var subjectId = parseInt($btn.data('subject-id'), 10) || 0;
-            var deleteUrl = $btn.attr('href');
-
+            var subjectId = parseInt(btn.getAttribute('data-subject-id') || '0', 10) || 0;
+            var deleteUrl = btn.getAttribute('href') || '';
             if (!subjectId || !deleteUrl) {
                 return;
             }
+            state.subjectId = subjectId;
+            state.deleteUrl = deleteUrl;
+            state.hasLinks = false;
 
-            $.getJSON("<?php echo admin_url('lims/subjects/delete_dependencies/'); ?>" + subjectId, function (resp) {
+            fetch("<?php echo admin_url('lims/subjects/delete_dependencies/'); ?>" + subjectId, {
+                credentials: 'same-origin'
+            }).then(function (r) {
+                return r.json();
+            }).then(function (resp) {
                 if (!resp || !resp.success) {
-                    if (confirm("Delete subject?")) {
-                        window.location.href = deleteUrl;
-                    }
+                    summaryEl.textContent = "Δεν βρέθηκαν πληροφορίες για dependencies. Θες να γίνει απλό delete;";
+                    countsWrap.classList.add('hide');
+                    showModal();
                     return;
                 }
 
                 if (!resp.has_any) {
-                    if (confirm("Delete subject?")) {
-                        window.location.href = deleteUrl;
-                    }
+                    summaryEl.textContent = "Το Subject δεν έχει συνδεδεμένα στοιχεία. Μπορεί να διαγραφεί άμεσα.";
+                    countsWrap.classList.add('hide');
+                    showModal();
                     return;
                 }
 
-                var counts = resp.counts || {};
-                var msg = "This subject has linked data:\n"
-                    + "- Orders: " + (counts.orders || 0) + "\n"
-                    + "- Contracts: " + (counts.contracts || 0) + "\n"
-                    + "- Appointments: " + (counts.appointments || 0) + "\n"
-                    + "- Tests: " + (counts.tests || 0) + "\n"
-                    + "- Samples: " + (counts.samples || 0) + "\n\n"
-                    + "OK = Delete all linked records\n"
-                    + "Cancel = Transfer linked records to another Subject";
+                state.hasLinks = true;
+                summaryEl.textContent = "Το Subject έχει συνδεδεμένα στοιχεία. Διάλεξε ενέργεια:";
+                setCounts(resp.counts || {});
+                countsWrap.classList.remove('hide');
+                var defaultAction = modal.querySelector('input[name="subject_delete_action"][value="delete_all"]');
+                if (defaultAction) defaultAction.checked = true;
+                toggleTransferInput();
+                showModal();
+            }).catch(function () {
+                summaryEl.textContent = "Δεν ήταν δυνατός ο έλεγχος dependencies. Θες να γίνει απλό delete;";
+                countsWrap.classList.add('hide');
+                showModal();
+            });
+        });
 
-                if (confirm(msg)) {
-                    window.location.href = buildDeleteUrl(subjectId, 'delete_all');
+        modal.addEventListener('change', function (e) {
+            if (e.target && e.target.name === 'subject_delete_action') {
+                toggleTransferInput();
+            }
+        });
+
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', function () {
+            if (!state.subjectId || !state.deleteUrl) {
+                return;
+            }
+
+            if (!state.hasLinks) {
+                window.location.href = state.deleteUrl;
+                return;
+            }
+
+            var checked = modal.querySelector('input[name="subject_delete_action"]:checked');
+            var mode = checked ? checked.value : 'delete_all';
+            if (mode === 'transfer') {
+                var target = parseInt(transferInput.value, 10) || 0;
+                if (target <= 0 || target === state.subjectId) {
+                    alert('Βάλε έγκυρο Target Subject ID.');
                     return;
                 }
+                window.location.href = buildDeleteUrl(state.subjectId, 'transfer', target);
+                return;
+            }
 
-                var target = prompt("Enter target Subject ID to transfer linked records:");
-                if (target && parseInt(target, 10) > 0) {
-                    window.location.href = buildDeleteUrl(subjectId, 'transfer', parseInt(target, 10));
-                }
-            }).fail(function () {
-                if (confirm("Delete subject?")) {
-                    window.location.href = deleteUrl;
-                }
+            if (mode === 'archive') {
+                window.location.href = buildDeleteUrl(state.subjectId, 'archive');
+                return;
+            }
+
+            window.location.href = buildDeleteUrl(state.subjectId, 'delete_all');
+            });
+        }
+
+        modal.querySelectorAll('[data-dismiss="modal"], .close').forEach(function (el) {
+            el.addEventListener('click', function (e) {
+                e.preventDefault();
+                hideModal();
             });
         });
     })();

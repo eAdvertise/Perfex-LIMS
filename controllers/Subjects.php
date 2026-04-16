@@ -25,13 +25,17 @@ class Subjects extends AdminController
         $p = db_prefix();
 
         // Φέρνουμε όλα τα subjects + client company (αν υπάρχει)
-        $rows = $this->db
+        $this->db
             ->select('s.*, c.company AS client_company')
             ->from($p . 'lims_subjects AS s')
             ->join($p . 'clients AS c', 'c.userid = s.client_id', 'left')
-            ->order_by('s.id', 'DESC')
-            ->get()
-            ->result();
+            ->order_by('s.id', 'DESC');
+
+        if ($this->db->field_exists('is_deleted', $p . 'lims_subjects')) {
+            $this->db->where('s.is_deleted', 0);
+        }
+
+        $rows = $this->db->get()->result();
 
         $data['rows']  = $rows;
         $data['title'] = _l('lims_subjects');
@@ -623,6 +627,10 @@ class Subjects extends AdminController
 			set_alert('warning', _l('not_found'));
 			return $this->redirect_after_subject_delete();
 		}
+		if ($this->subjects_model->is_marked_deleted($id)) {
+			set_alert('warning', 'Subject is already archived.');
+			return $this->redirect_after_subject_delete();
+		}
 
 		$mode = (string)$this->input->get('mode');
 		if ($mode === '') {
@@ -654,6 +662,10 @@ class Subjects extends AdminController
 				set_alert('warning', _l('lims_error_generic') ?: 'Please select a valid target subject.');
 				return $this->redirect_after_subject_delete();
 			}
+			if ($this->subjects_model->is_marked_deleted($targetSubjectId)) {
+				set_alert('warning', 'Target subject is archived. Please select an active subject.');
+				return $this->redirect_after_subject_delete();
+			}
 
 			$moved = $this->subjects_model->transfer_links($id, $targetSubjectId);
 			if (!$moved) {
@@ -666,12 +678,18 @@ class Subjects extends AdminController
 			return $this->redirect_after_subject_delete();
 		}
 
+		if ($mode === 'archive') {
+			$ok = $this->subjects_model->mark_as_deleted($id, get_staff_user_id());
+			set_alert($ok ? 'success' : 'danger', $ok ? 'Subject archived (marked as deleted).' : 'Could not archive subject.');
+			return $this->redirect_after_subject_delete();
+		}
+
 		$details = 'Orders: ' . (int)$counts['orders']
 			. ', Contracts: ' . (int)$counts['contracts']
 			. ', Appointments: ' . (int)$counts['appointments']
 			. ', Tests: ' . (int)$counts['tests']
 			. ', Samples: ' . (int)$counts['samples'];
-		set_alert('warning', 'This subject has linked records. Choose "Delete all" or "Transfer". ' . $details);
+		set_alert('warning', 'This subject has linked records. Choose "Delete all", "Transfer", or "Archive". ' . $details);
 
 		return $this->redirect_after_subject_delete();
 	}
