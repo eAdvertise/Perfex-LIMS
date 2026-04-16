@@ -151,14 +151,8 @@ $subjects = $CI->db->get()->result();
 </div>
 
 <script>
-    (function (jQueryRef) {
+    (function () {
         "use strict";
-        if (!jQueryRef || !jQueryRef.fn) {
-            return;
-        }
-        var $ = jQueryRef;
-        var $modal = $('#limsSubjectDeleteModal');
-
         var jq = window.jQuery || window.$;
         if (!jq) {
             return;
@@ -188,15 +182,6 @@ $subjects = $CI->db->get()->result();
 
         function setCounts(counts) {
             counts = counts || {};
-            $modal.find('[data-k="orders"]').text(parseInt(counts.orders || 0, 10));
-            $modal.find('[data-k="contracts"]').text(parseInt(counts.contracts || 0, 10));
-            $modal.find('[data-k="appointments"]').text(parseInt(counts.appointments || 0, 10));
-            $modal.find('[data-k="tests"]').text(parseInt(counts.tests || 0, 10));
-            $modal.find('[data-k="samples"]').text(parseInt(counts.samples || 0, 10));
-        }
-
-        function toggleTransferInput() {
-            var mode = $modal.find('input[name="subject_delete_action"]:checked').val() || 'delete_all';
             $countsWrap.find('[data-k="orders"]').text(parseInt(counts.orders || 0, 10));
             $countsWrap.find('[data-k="contracts"]').text(parseInt(counts.contracts || 0, 10));
             $countsWrap.find('[data-k="appointments"]').text(parseInt(counts.appointments || 0, 10));
@@ -214,11 +199,6 @@ $subjects = $CI->db->get()->result();
             }
         }
 
-        $(document).on('click', '.js-lims-subject-delete', function (e) {
-            e.preventDefault();
-            var $btn = $(this);
-            var subjectId = parseInt($btn.data('subject-id') || 0, 10) || 0;
-            var deleteUrl = $btn.attr('href') || '';
         jq(document).on('click', '.js-lims-subject-delete', function (e) {
             e.preventDefault();
 
@@ -226,12 +206,6 @@ $subjects = $CI->db->get()->result();
             var subjectId = parseInt($btn.data('subject-id'), 10) || 0;
             var deleteUrl = $btn.attr('href');
 
-        document.addEventListener('click', function (e) {
-            var btn = e.target.closest('.js-lims-subject-delete');
-            if (!btn) return;
-            e.preventDefault();
-            var subjectId = parseInt(btn.getAttribute('data-subject-id') || '0', 10) || 0;
-            var deleteUrl = btn.getAttribute('href') || '';
             if (!subjectId || !deleteUrl) {
                 return;
             }
@@ -270,7 +244,6 @@ $subjects = $CI->db->get()->result();
 
         $modal.on('change', 'input[name="subject_delete_action"]', toggleTransferInput);
 
-        $(document).on('click', '.js-confirm-subject-delete', function () {
         jq(document).on('click', '.js-confirm-subject-delete', function () {
             if (!state.subjectId || !state.deleteUrl) {
                 return;
@@ -299,5 +272,5 @@ $subjects = $CI->db->get()->result();
 
             window.location.href = buildDeleteUrl(state.subjectId, 'delete_all');
         });
-    })(typeof window !== 'undefined' ? window.jQuery : null);
+    })();
 </script>
