@@ -101,6 +101,10 @@ $subjects = $CI->db->get()->result();
 <script>
     (function () {
         "use strict";
+        var jq = window.jQuery || window.$;
+        if (!jq) {
+            return;
+        }
 
         function buildDeleteUrl(subjectId, mode, targetId) {
             var url = "<?php echo admin_url('lims/subjects/delete/'); ?>" + subjectId
@@ -113,10 +117,10 @@ $subjects = $CI->db->get()->result();
             return url;
         }
 
-        $(document).on('click', '.js-lims-subject-delete', function (e) {
+        jq(document).on('click', '.js-lims-subject-delete', function (e) {
             e.preventDefault();
 
-            var $btn = $(this);
+            var $btn = jq(this);
             var subjectId = parseInt($btn.data('subject-id'), 10) || 0;
             var deleteUrl = $btn.attr('href');
 
@@ -124,7 +128,7 @@ $subjects = $CI->db->get()->result();
                 return;
             }
 
-            $.getJSON("<?php echo admin_url('lims/subjects/delete_dependencies/'); ?>" + subjectId, function (resp) {
+            jq.getJSON("<?php echo admin_url('lims/subjects/delete_dependencies/'); ?>" + subjectId, function (resp) {
                 if (!resp || !resp.success) {
                     if (confirm("Delete subject?")) {
                         window.location.href = deleteUrl;
