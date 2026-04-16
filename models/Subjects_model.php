@@ -55,6 +55,22 @@ class Subjects_model extends App_Model
         return $subject;
     }
 
+    public function is_marked_deleted($id)
+    {
+        $id = (int)$id;
+        if ($id <= 0) {
+            return false;
+        }
+
+        if (!$this->db->field_exists('is_deleted', $this->table)) {
+            return false;
+        }
+
+        $row = $this->db->select('is_deleted')->get_where($this->table, ['id' => $id])->row();
+
+        return $row ? ((int)$row->is_deleted === 1) : false;
+    }
+
     public function get_client($subject)
     {
         if (!$subject || empty($subject->client_id)) {
@@ -196,6 +212,38 @@ class Subjects_model extends App_Model
     }
 
     /**
+     * Soft delete (archive) a subject while keeping linked records intact.
+     */
+    public function mark_as_deleted($subject_id, $staff_id = null)
+    {
+        $subject_id = (int)$subject_id;
+        $staff_id   = (int)$staff_id;
+
+        if ($subject_id <= 0 || !$this->db->field_exists('is_deleted', $this->table)) {
+            return false;
+        }
+
+        $update = [
+            'is_deleted' => 1,
+            'active'     => 0,
+        ];
+
+        if ($this->db->field_exists('deleted_at', $this->table)) {
+            $update['deleted_at'] = date('Y-m-d H:i:s');
+        }
+        if ($this->db->field_exists('deleted_by', $this->table)) {
+            $update['deleted_by'] = $staff_id > 0 ? $staff_id : null;
+        }
+        if ($this->db->field_exists('updated_at', $this->table)) {
+            $update['updated_at'] = date('Y-m-d H:i:s');
+        }
+
+        $this->db->where('id', $subject_id)->update($this->table, $update);
+
+        return $this->db->affected_rows() >= 0;
+    }
+
+    /**
      * Move linked entities from one subject to another.
      */
     public function transfer_links($from_subject_id, $to_subject_id)
@@ -252,29 +300,89 @@ class Subjects_model extends App_Model
 
         $this->db->trans_begin();
 
-        // Tests first (direct + via samples)
-        if ($this->db->table_exists($p . 'lims_tests')) {
-            if ($this->db->field_exists('subject_id', $p . 'lims_tests')) {
-                $this->db->where('subject_id', $subject_id)->delete($p . 'lims_tests');
-            } elseif ($this->db->field_exists('sample_id', $p . 'lims_tests') && $this->db->table_exists($p . 'lims_samples')) {
-                $sampleIds = $this->db->select('id')->where('subject_id', $subject_id)->get($p . 'lims_samples')->result();
-                if (!empty($sampleIds)) {
-                    $ids = array_map(function ($r) {
-                        return (int)$r->id;
-                    }, $sampleIds);
-                    if (!empty($ids)) {
-                        $this->db->where_in('sample_id', $ids)->delete($p . 'lims_tests');
-                    }
+        $orderIds = [];
+        $sampleIds = [];
+        $testIds = [];
+        $appointmentIds = [];
+
+        if ($this->db->table_exists($p . 'lims_orders') && $this->db->field_exists('subject_id', $p . 'lims_orders')) {
+            $rows = $this->db->select('id')->where('subject_id', $subject_id)->get($p . 'lims_orders')->result();
+            $orderIds = array_map(function ($r) {
+                return (int)$r->id;
+            }, $rows);
+        }
+
+        if ($this->db->table_exists($p . 'lims_samples')) {
+            if ($this->db->field_exists('subject_id', $p . 'lims_samples')) {
+                $rows = $this->db->select('id')->where('subject_id', $subject_id)->get($p . 'lims_samples')->result();
+                $sampleIds = array_map(function ($r) {
+                    return (int)$r->id;
+                }, $rows);
+            }
+            if (!empty($orderIds) && $this->db->field_exists('order_id', $p . 'lims_samples')) {
+                $rows = $this->db->select('id')->where_in('order_id', $orderIds)->get($p . 'lims_samples')->result();
+                foreach ($rows as $r) {
+                    $sampleIds[] = (int)$r->id;
                 }
             }
         }
+        $sampleIds = array_values(array_unique(array_filter($sampleIds)));
 
-        if ($this->db->table_exists($p . 'lims_appointments') && $this->db->field_exists('subject_id', $p . 'lims_appointments')) {
-            $this->db->where('subject_id', $subject_id)->delete($p . 'lims_appointments');
+        if ($this->db->table_exists($p . 'lims_tests')) {
+            if (!empty($sampleIds) && $this->db->field_exists('sample_id', $p . 'lims_tests')) {
+                $rows = $this->db->select('id')->where_in('sample_id', $sampleIds)->get($p . 'lims_tests')->result();
+                $testIds = array_map(function ($r) {
+                    return (int)$r->id;
+                }, $rows);
+            } elseif ($this->db->field_exists('subject_id', $p . 'lims_tests')) {
+                $rows = $this->db->select('id')->where('subject_id', $subject_id)->get($p . 'lims_tests')->result();
+                $testIds = array_map(function ($r) {
+                    return (int)$r->id;
+                }, $rows);
+            }
         }
 
-        if ($this->db->table_exists($p . 'lims_samples') && $this->db->field_exists('subject_id', $p . 'lims_samples')) {
-            $this->db->where('subject_id', $subject_id)->delete($p . 'lims_samples');
+        if ($this->db->table_exists($p . 'lims_appointments')) {
+            if ($this->db->field_exists('subject_id', $p . 'lims_appointments')) {
+                $rows = $this->db->select('id')->where('subject_id', $subject_id)->get($p . 'lims_appointments')->result();
+                $appointmentIds = array_map(function ($r) {
+                    return (int)$r->id;
+                }, $rows);
+            }
+            if (!empty($orderIds) && $this->db->field_exists('order_id', $p . 'lims_appointments')) {
+                $rows = $this->db->select('id')->where_in('order_id', $orderIds)->get($p . 'lims_appointments')->result();
+                foreach ($rows as $r) {
+                    $appointmentIds[] = (int)$r->id;
+                }
+            }
+        }
+        $appointmentIds = array_values(array_unique(array_filter($appointmentIds)));
+
+        // Children of tests
+        if (!empty($testIds)) {
+            if ($this->db->table_exists($p . 'lims_results') && $this->db->field_exists('test_id', $p . 'lims_results')) {
+                $this->db->where_in('test_id', $testIds)->delete($p . 'lims_results');
+            }
+            if ($this->db->table_exists($p . 'lims_test_audit') && $this->db->field_exists('test_id', $p . 'lims_test_audit')) {
+                $this->db->where_in('test_id', $testIds)->delete($p . 'lims_test_audit');
+            }
+            $this->db->where_in('id', $testIds)->delete($p . 'lims_tests');
+        }
+
+        // Children of samples
+        if (!empty($sampleIds)) {
+            if ($this->db->table_exists($p . 'lims_sample_cultures') && $this->db->field_exists('sample_id', $p . 'lims_sample_cultures')) {
+                $this->db->where_in('sample_id', $sampleIds)->delete($p . 'lims_sample_cultures');
+            }
+            if ($this->db->table_exists($p . 'lims_culture_results') && $this->db->field_exists('sample_id', $p . 'lims_culture_results')) {
+                $this->db->where_in('sample_id', $sampleIds)->delete($p . 'lims_culture_results');
+            }
+            $this->db->where_in('id', $sampleIds)->delete($p . 'lims_samples');
+        }
+
+        // Appointments
+        if (!empty($appointmentIds)) {
+            $this->db->where_in('id', $appointmentIds)->delete($p . 'lims_appointments');
         }
 
         if ($this->db->table_exists($p . 'lims_contracts') && $this->db->field_exists('subject_id', $p . 'lims_contracts')) {
@@ -290,26 +398,26 @@ class Subjects_model extends App_Model
             $this->db->where('subject_id', $subject_id)->delete($p . 'lims_contracts');
         }
 
-        if ($this->db->table_exists($p . 'lims_orders') && $this->db->field_exists('subject_id', $p . 'lims_orders')) {
-            $orderIds = $this->db->select('id')->where('subject_id', $subject_id)->get($p . 'lims_orders')->result();
-            if (!empty($orderIds)) {
-                $ids = array_map(function ($r) {
-                    return (int)$r->id;
-                }, $orderIds);
-                if (!empty($ids)) {
-                    if ($this->db->table_exists($p . 'lims_order_items') && $this->db->field_exists('order_id', $p . 'lims_order_items')) {
-                        $this->db->where_in('order_id', $ids)->delete($p . 'lims_order_items');
-                    }
-                    if ($this->db->table_exists($p . 'lims_order_activity') && $this->db->field_exists('order_id', $p . 'lims_order_activity')) {
-                        $this->db->where_in('order_id', $ids)->delete($p . 'lims_order_activity');
-                    }
-                    if ($this->db->table_exists($p . 'lims_billing_links') && $this->db->field_exists('order_id', $p . 'lims_billing_links')) {
-                        $this->db->where_in('order_id', $ids)->delete($p . 'lims_billing_links');
-                    }
-                }
+        if (!empty($orderIds)) {
+            if ($this->db->table_exists($p . 'lims_order_items') && $this->db->field_exists('order_id', $p . 'lims_order_items')) {
+                $this->db->where_in('order_id', $orderIds)->delete($p . 'lims_order_items');
             }
-
-            $this->db->where('subject_id', $subject_id)->delete($p . 'lims_orders');
+            if ($this->db->table_exists($p . 'lims_order_activity') && $this->db->field_exists('order_id', $p . 'lims_order_activity')) {
+                $this->db->where_in('order_id', $orderIds)->delete($p . 'lims_order_activity');
+            }
+            if ($this->db->table_exists($p . 'lims_billing_links') && $this->db->field_exists('order_id', $p . 'lims_billing_links')) {
+                $this->db->where_in('order_id', $orderIds)->delete($p . 'lims_billing_links');
+            }
+            if ($this->db->table_exists($p . 'lims_sync_outbox') && $this->db->field_exists('order_id', $p . 'lims_sync_outbox')) {
+                $this->db->where_in('order_id', $orderIds)->delete($p . 'lims_sync_outbox');
+            }
+            if ($this->db->table_exists($p . 'lims_culture_results') && $this->db->field_exists('order_id', $p . 'lims_culture_results')) {
+                $this->db->where_in('order_id', $orderIds)->delete($p . 'lims_culture_results');
+            }
+            if ($this->db->table_exists($p . 'lims_sample_cultures') && $this->db->field_exists('order_id', $p . 'lims_sample_cultures')) {
+                $this->db->where_in('order_id', $orderIds)->delete($p . 'lims_sample_cultures');
+            }
+            $this->db->where_in('id', $orderIds)->delete($p . 'lims_orders');
         }
 
         $this->db->where('id', $subject_id)->delete($this->table);
