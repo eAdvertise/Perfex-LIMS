@@ -1,238 +1,214 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 <?php init_head(); ?>
-<div id="wrapper">
-    <div class="content">
-        <div class="row">
-            <div class="col-md-12">
-                <h4 class="tw-mt-0 tw-font-semibold">
-                    <?php echo html_escape($title ?? (_l('lims_subject') ?: 'Subject')); ?>
-                </h4>
-            </div>
+
+<?php
+// helpers
+$subject_id = (int)$subject->id;
+
+// Τίτλος header (όπως στο client)
+$headerTitle = '#' . $subject_id . ' ' . $title;
+
+// Display name για το πάνω μέρος του panel
+$displayName = $title;
+
+// subject type label
+$typeLabel = '';
+if (!empty($subject->subject_type)) {
+    $typeLabel = ucfirst($subject->subject_type);
+}
+
+// full name / subject name
+$fullName = '';
+if ($subject->subject_type === 'patient') {
+    $fn = trim(($subject->first_name ?? '') . ' ' . ($subject->last_name ?? ''));
+    $fullName = $fn !== '' ? $fn : ($subject->subject_name ?? '');
+} else {
+    $fullName = $subject->subject_name ?: '';
+}
+if ($fullName === '') {
+    $fullName = $headerTitle;
+}
+
+// country label
+$countryName = '';
+if (!empty($subject->country)) {
+    $country = get_country($subject->country);
+    if ($country) {
+        $countryName = $country->short_name;
+    }
+}
+
+// ηλικία από date_of_birth (προαιρετικά)
+$ageText = '';
+if (!empty($subject->date_of_birth) && $subject->date_of_birth !== '0000-00-00') {
+    try {
+        $dob  = new DateTime($subject->date_of_birth);
+        $now  = new DateTime();
+        $diff = $now->diff($dob);
+        $ageText = $diff->y . ' ' . _l('years');
+    } catch (Exception $e) {
+        $ageText = '';
+    }
+}
+?>
+
+<div id="wrapper" class="customer_profile">
+  <div class="content">
+
+    <!-- μικρό spacing block όπως στο client.php -->
+    <div class="md:tw-w-[calc(100%-theme(width.64)+theme(spacing.16))] [&_div:last-child]:tw-mb-6"></div>
+
+    <!-- header με #ID και dropdown για edit -->
+    <div class="md:tw-max-w-64 tw-w-full">
+      <h4 class="tw-text-lg tw-font-bold tw-text-neutral-800 tw-mt-0">
+        <div class="tw-space-x-3 tw-flex tw-items-center">
+          <span class="tw-truncate">
+            <?php echo e($headerTitle); ?>
+          </span>
+
+          <div class="btn-group">
+            <a href="#" class="dropdown-toggle btn-link" data-toggle="dropdown" aria-haspopup="true"
+               aria-expanded="false">
+              <span class="caret"></span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-right">
+              <li>
+                <a href="<?php echo admin_url('lims/subjects/create/' . $subject_id); ?>">
+                  <i class="fa fa-pencil-square-o"></i>
+                  <?php echo _l('edit'); ?>
+                </a>
+              </li>
+            </ul>
+          </div>
+
         </div>
-
-        <div class="row">
-            <div class="col-md-3">
-                <div class="panel_s">
-                    <div class="panel-heading">
-                        <strong>
-                            <?php echo html_escape($subject_details_card_title ?? (_l('lims_subject') ?: 'Subject') . ' Details'); ?>
-                        </strong>
-                    </div>
-                    <div class="panel-body">
-                        <?php
-                        $rows = isset($subject_details_rows) && is_array($subject_details_rows) ? $subject_details_rows : [];
-                        if (empty($rows) && isset($subject)) {
-                            $fallbackName = trim((string)($subject->subject_name ?? ''));
-                            if ($fallbackName === '') {
-                                $fallbackName = trim((string)($subject->first_name ?? '') . ' ' . (string)($subject->last_name ?? ''));
-                            }
-                            if ($fallbackName !== '') {
-                                $rows[] = ['label' => _l('lims_subject_name') ?: (_l('name') ?: 'Name'), 'value' => $fallbackName];
-                            }
-                        }
-                        ?>
-
-                        <?php if (!empty($subject_type_normalized)): ?>
-                            <p class="text-muted mtop0">
-                                <strong><?php echo _l('lims_subject_type') ?: _l('type') ?: 'Type'; ?>:</strong>
-                                <?php echo html_escape(ucfirst((string)$subject_type_normalized)); ?>
-                            </p>
-                        <?php endif; ?>
-
-                        <?php if (!empty($rows)): ?>
-                            <?php foreach ($rows as $r): ?>
-                                <?php
-                                $label = isset($r['label']) ? (string)$r['label'] : '';
-                                $value = isset($r['value']) ? trim((string)$r['value']) : '';
-                                if ($value === '') {
-                                    continue;
-                                }
-                                ?>
-                                <p class="no-margin">
-                                    <strong><?php echo html_escape($label); ?>:</strong>
-                                    <?php echo html_escape($value); ?>
-                                </p>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <p class="text-muted"><?php echo _l('no_data_available') ?: 'No details available.'; ?></p>
-                        <?php endif; ?>
-                    </div>
-                </div>
-
-                <?php
-                $subjectId = isset($subject->id) ? (int)$subject->id : 0;
-                $items = [
-                    'profile'           => _l('profile') ?: 'Profile',
-                    'orders'            => _l('lims_orders') ?: 'Orders',
-                    'samples'           => _l('lims_samples') ?: 'Samples',
-                    'invoices'          => _l('invoices') ?: 'Invoices',
-                    'creditnotes'       => _l('credit_notes') ?: 'Credit Notes',
-                    'receipts_payments' => _l('payments') ?: 'Receipts / Payments',
-                    'waybills'          => _l('delivery_notes') ?: 'Waybills',
-                    'notes'             => _l('notes') ?: 'Notes',
-                    'files'             => _l('customer_files') ?: 'Files',
-                    'reminders'         => _l('reminders') ?: 'Reminders',
-                ];
-                ?>
-                <div class="panel_s">
-                    <div class="panel-body p-0">
-                        <ul class="nav navbar-pills nav-stacked no-margin">
-                            <?php foreach ($items as $key => $label): ?>
-                                <li class="<?php echo (($group ?? 'profile') === $key) ? 'active' : ''; ?>">
-                                    <a href="<?php echo admin_url('lims/subjects/view/' . $subjectId . '?group=' . $key); ?>">
-                                        <?php echo html_escape($label); ?>
-                                    </a>
-                                </li>
-                            <?php endforeach; ?>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-9">
-                <div class="panel_s">
-                    <div class="panel-body">
-                        <?php $activeGroup = $group ?? 'profile'; ?>
-
-                        <?php if ($activeGroup === 'orders'): ?>
-                            <h4 class="tw-mt-0"><?php echo _l('lims_orders') ?: 'Orders'; ?></h4>
-                            <div class="table-responsive">
-                                <table class="table table-striped">
-                                    <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th><?php echo _l('date'); ?></th>
-                                        <th><?php echo _l('status'); ?></th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <?php if (!empty($orders)): ?>
-                                        <?php foreach ($orders as $o): ?>
-                                            <tr>
-                                                <td>
-                                                    <a href="<?php echo admin_url('lims/orders/view/' . (int)$o->id); ?>">
-                                                        #<?php echo (int)$o->id; ?>
-                                                    </a>
-                                                </td>
-                                                <td><?php echo !empty($o->created_at) ? _dt($o->created_at) : '-'; ?></td>
-                                                <td><?php echo html_escape((string)($o->status ?? '-')); ?></td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php else: ?>
-                                        <tr><td colspan="3" class="text-muted"><?php echo _l('no_records_found'); ?></td></tr>
-                                    <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-
-                        <?php elseif ($activeGroup === 'samples'): ?>
-                            <h4 class="tw-mt-0"><?php echo _l('lims_samples') ?: 'Samples'; ?></h4>
-                            <div class="table-responsive">
-                                <table class="table table-striped">
-                                    <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th><?php echo _l('lims_sample_type') ?: 'Sample Type'; ?></th>
-                                        <th><?php echo _l('date'); ?></th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
-                                    <?php if (!empty($samples)): ?>
-                                        <?php foreach ($samples as $s): ?>
-                                            <tr>
-                                                <td><?php echo (int)$s->id; ?></td>
-                                                <td><?php echo html_escape((string)($s->sample_type_name ?? '-')); ?></td>
-                                                <td><?php echo !empty($s->created_at) ? _dt($s->created_at) : '-'; ?></td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php else: ?>
-                                        <tr><td colspan="3" class="text-muted"><?php echo _l('no_records_found'); ?></td></tr>
-                                    <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-
-                        <?php elseif ($activeGroup === 'invoices'): ?>
-                            <h4 class="tw-mt-0"><?php echo _l('invoices'); ?></h4>
-                            <p class="text-muted"><?php echo (int)count($billing_invoices ?? []); ?> <?php echo _l('records'); ?></p>
-
-                        <?php elseif ($activeGroup === 'creditnotes'): ?>
-                            <h4 class="tw-mt-0"><?php echo _l('credit_notes') ?: 'Credit Notes'; ?></h4>
-                            <p class="text-muted"><?php echo (int)count($billing_creditnotes ?? []); ?> <?php echo _l('records'); ?></p>
-
-                        <?php elseif ($activeGroup === 'receipts_payments'): ?>
-                            <h4 class="tw-mt-0"><?php echo _l('payments') ?: 'Receipts / Payments'; ?></h4>
-                            <p class="text-muted">
-                                <?php echo (int)count($billing_receipts ?? []) + (int)count($billing_payments ?? []); ?>
-                                <?php echo _l('records'); ?>
-                            </p>
-
-                        <?php elseif ($activeGroup === 'waybills'): ?>
-                            <h4 class="tw-mt-0"><?php echo _l('delivery_notes') ?: 'Waybills'; ?></h4>
-                            <p class="text-muted"><?php echo (int)count($billing_delivery_notes ?? []); ?> <?php echo _l('records'); ?></p>
-
-                        <?php elseif ($activeGroup === 'files'): ?>
-                            <h4 class="tw-mt-0"><?php echo _l('customer_files') ?: 'Files'; ?></h4>
-                            <?php if (!empty($attachments)): ?>
-                                <ul class="list-unstyled">
-                                    <?php foreach ($attachments as $a): ?>
-                                        <li>
-                                            <i class="fa fa-paperclip"></i>
-                                            <?php echo html_escape((string)($a->file_name ?? '')); ?>
-                                        </li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            <?php else: ?>
-                                <p class="text-muted"><?php echo _l('no_files_found') ?: 'No files found.'; ?></p>
-                            <?php endif; ?>
-
-                        <?php elseif ($activeGroup === 'reminders'): ?>
-                            <h4 class="tw-mt-0"><?php echo _l('reminders'); ?></h4>
-                            <?php if (!empty($reminders)): ?>
-                                <ul class="list-unstyled">
-                                    <?php foreach ($reminders as $r): ?>
-                                        <li>
-                                            <strong><?php echo html_escape((string)($r['description'] ?? '')); ?></strong>
-                                            <span class="text-muted">
-                                                (<?php echo html_escape((string)($r['date'] ?? '')); ?>)
-                                            </span>
-                                        </li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            <?php else: ?>
-                                <p class="text-muted"><?php echo _l('no_reminders_for_this_customer') ?: 'No reminders.'; ?></p>
-                            <?php endif; ?>
-
-                        <?php elseif ($activeGroup === 'notes'): ?>
-                            <h4 class="tw-mt-0"><?php echo _l('notes'); ?></h4>
-                            <?php if (!empty($user_notes)): ?>
-                                <ul class="list-unstyled">
-                                    <?php foreach ($user_notes as $n): ?>
-                                        <li><?php echo nl2br(html_escape((string)($n['description'] ?? ''))); ?></li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            <?php else: ?>
-                                <p class="text-muted"><?php echo _l('no_notes_found'); ?></p>
-                            <?php endif; ?>
-
-                        <?php else: ?>
-                            <h4 class="tw-mt-0"><?php echo _l('profile') ?: 'Profile'; ?></h4>
-                            <p class="text-muted">
-                                <?php echo _l('lims_subject') ?: 'Subject'; ?> #<?php echo (int)($subject->id ?? 0); ?>
-                            </p>
-                            <?php if (!empty($client)): ?>
-                                <p>
-                                    <strong><?php echo _l('customer'); ?>:</strong>
-                                    <?php echo html_escape((string)($client->company ?? '-')); ?>
-                                </p>
-                            <?php endif; ?>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-        </div>
+      </h4>
     </div>
+
+    <div class="md:tw-flex md:tw-gap-6">
+
+      <!-- ΑΡΙΣΤΕΡΟ ΚΑΘΕΤΟ MENU -->
+      <div class="md:tw-max-w-64 tw-w-full">
+        <div class="tw-mt-6 tw-flex tw-flex-col tw-space-y-1">
+
+          <?php
+		  
+          $items = [
+			'profile' => [
+				'icon'  => 'fa fa-user',
+				'label' => _l('lims_profile') ?: 'Profile',
+            ],
+            'orders' => [
+				'icon'  => 'fa fa-list-alt',
+				'label' => _l('lims_orders') ?: 'Orders',
+            ],
+            'samples'=> [
+				'icon'  => 'fa fa-flask',
+				'label' => _l('lims_samples') ?: 'Samples',
+            ],
+            'invoices' => [
+				'icon'  => 'fa fa-file-invoice',
+				'label' => _l('invoices') ?: 'Invoices',
+            ],
+            'creditnotes' => [
+				'icon'  => 'fa fa-file',
+				'label' => _l('credit_notes') ?: 'Credit Notes',
+            ], 
+            'receipts_payments' => [
+              'icon'  => 'fa fa-receipt',
+              'label' => _l('lims_subject_receipts_or_payments') ?: 'Receipts / Payments',
+            ],
+            'waybills' => [
+              'icon'  => 'fa fa-truck',
+              'label' => _l('delivery_notes') ?: 'Waybills',
+            ],
+            'notes' => [
+				'icon'  => 'fa fa-note-sticky',
+				'label' => _l('notes'),
+            ],
+            'files' => [
+				'icon'  => 'fa fa-paperclip',
+				'label' => _l('customer_attachments') ?: 'Files',
+            ],
+            'reminders' => [
+				'icon'  => 'fa fa-bell',
+				'label' => _l('reminders'),
+            ],
+          ];
+          
+          foreach ($items as $slug => $cfg):
+              $active = ($group === $slug);
+              $href   = admin_url('lims/subjects/view/' . $subject_id . '?group=' . $slug);
+          ?>
+          <a href="<?php echo $href; ?>"
+             class="tw-flex tw-items-center tw-justify-between tw-rounded-lg tw-px-3 tw-py-2 tw-text-sm
+                    tw-border tw-border-transparent hover:tw-border-neutral-200 hover:tw-bg-neutral-50
+                    <?php echo $active
+                        ? 'tw-bg-neutral-50 tw-border-neutral-200 tw-font-medium tw-text-neutral-900'
+                        : 'tw-text-neutral-600'; ?>">
+            <span class="tw-flex tw-items-center tw-space-x-2">
+              <i class="<?php echo $cfg['icon']; ?> tw-text-xs"></i>
+              <span><?php echo $cfg['label']; ?></span>
+            </span>
+          </a>
+          <?php endforeach; ?>
+
+        </div>
+      </div>
+
+      <!-- ΔΕΞΙΑ ΠΕΡΙΕΧΟΜΕΝΟ ΑΝΑΛΟΓΑ ΜΕ ΤΟ group -->
+      <div class="tw-mt-12 md:tw-mt-0 tw-w-full tw-max-w-6xl">
+
+        <div class="panel_s">
+          <div class="panel-body">
+            <?php
+              $panel_path = 'lims/admin/subjects/panels/';
+              switch ($group) {
+                case 'orders':
+                  $this->load->view($panel_path . 'orders');
+                  break;
+                case 'samples':
+                  $this->load->view($panel_path . 'samples');
+                  break;
+                case 'invoices':
+                  $this->load->view($panel_path . 'invoices');
+                  break;
+                case 'creditnotes':
+                  $this->load->view($panel_path . 'creditnotes');
+                  break;
+                case 'receipts_payments':
+                  $this->load->view($panel_path . 'receipts_or_payments');
+                  break;
+				case 'receipts_payments':
+                  $this->load->view($panel_path . 'receipts_or_payments');
+                  break;
+                case 'waybills':
+                  $this->load->view($panel_path . 'waybills');
+                  break;
+                case 'notes':
+                  $this->load->view($panel_path . 'notes');
+                  break;
+                case 'files':
+                  $this->load->view($panel_path . 'files');
+                  break;
+                case 'reminders':
+                  $this->load->view($panel_path . 'reminders');
+                  break;
+                case 'profile':
+                default:
+                  $this->load->view($panel_path . 'profile');
+                  break;
+              }
+            ?>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
 </div>
+
 <?php init_tail(); ?>
 </body>
 </html>
