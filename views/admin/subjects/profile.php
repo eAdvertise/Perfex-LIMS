@@ -2,9 +2,14 @@
 <?php
 /**
  * Keep native/Core UI exactly as-is and only patch the Subject Details box content.
- * We render the original app view first, then update only the left details block via JS.
+ * IMPORTANT: include APPPATH core view directly to avoid recursive module override loading.
  */
-$this->load->view('admin/subjects/profile');
+$coreProfileView = rtrim(APPPATH, '/\\') . DIRECTORY_SEPARATOR . 'views' . DIRECTORY_SEPARATOR . 'admin' . DIRECTORY_SEPARATOR . 'subjects' . DIRECTORY_SEPARATOR . 'profile.php';
+if (is_file($coreProfileView)) {
+    include $coreProfileView;
+} else {
+    echo '<div class="alert alert-warning mtop15">Core profile view was not found at: ' . html_escape($coreProfileView) . '</div>';
+}
 
 $detailsTitle = isset($subject_details_card_title) ? (string)$subject_details_card_title : 'Subject Details';
 $detailsRows  = isset($subject_details_rows) && is_array($subject_details_rows) ? $subject_details_rows : [];
