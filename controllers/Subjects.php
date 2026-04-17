@@ -309,7 +309,21 @@ class Subjects extends AdminController
 		$data['subject_details_rows']       = $detailsRows;
 		$data['subject_type_normalized']    = $subjectType;
 
-		$data['subject'] = $subject;
+		// Keep existing UI behavior intact:
+		// Many installations render Subject Details only for "patient" type in the profile view.
+		// To keep the same UI and still show details for all subject types, provide a display copy
+		// normalized as patient while preserving the real type in separate data key.
+		$subjectForView = clone $subject;
+		$realSubjectType = strtolower((string)($subjectForView->subject_type ?? ''));
+		if ($realSubjectType !== 'patient') {
+			$subjectForView->subject_type = 'patient';
+			if (empty($subjectForView->first_name) && !empty($subjectForView->subject_name)) {
+				$subjectForView->first_name = $subjectForView->subject_name;
+			}
+		}
+
+		$data['subject']               = $subjectForView;
+		$data['subject_real_type']     = $realSubjectType;
 		$data['client']  = $client;
 		$data['orders']  = $orders;
 		$data['samples'] = $samples;
