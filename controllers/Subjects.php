@@ -244,7 +244,74 @@ class Subjects extends AdminController
 			$displayName = '#' . $id;
 		}
 
-		$data['subject'] = $subject;
+		// Subject details (left card): support all subject types
+		$subjectType = strtolower((string)($subject->subject_type ?? ''));
+		if ($subjectType === '') {
+			$subjectType = 'other';
+		}
+
+		$detailsTitleByType = [
+			'patient'    => _l('lims_subject_type_patient') ?: 'Patient',
+			'farm'       => _l('lims_subject_type_farm') ?: 'Farm',
+			'restaurant' => _l('lims_subject_type_restaurant') ?: 'Restaurant',
+			'lab'        => _l('lims_subject_type_lab') ?: 'Laboratory',
+			'doctor'     => _l('lims_subject_type_doctor') ?: 'Doctor',
+			'other'      => _l('lims_subject_type_other') ?: 'Other',
+		];
+
+		$detailsName = trim((string)($subject->subject_name ?? ''));
+		if ($detailsName === '') {
+			$detailsName = trim((string)($subject->first_name ?? '') . ' ' . (string)($subject->last_name ?? ''));
+		}
+		if ($detailsName === '') {
+			$detailsName = '#' . $id;
+		}
+
+		$detailsRows = [
+			['label' => _l('lims_subject_name') ?: _l('name') ?: 'Name', 'value' => $detailsName],
+		];
+
+		if (!empty($subject->internal_code)) {
+			$detailsRows[] = ['label' => _l('lims_subject_internal_code') ?: 'Internal Code', 'value' => (string)$subject->internal_code];
+		}
+		if (!empty($subject->id_number)) {
+			$detailsRows[] = ['label' => _l('lims_subject_id_number') ?: 'ID / Passport', 'value' => (string)$subject->id_number];
+		}
+		if (!empty($subject->phone)) {
+			$detailsRows[] = ['label' => _l('client_phone') ?: _l('phone') ?: 'Phone', 'value' => (string)$subject->phone];
+		}
+		if (!empty($subject->email)) {
+			$detailsRows[] = ['label' => _l('client_email') ?: _l('email') ?: 'Email', 'value' => (string)$subject->email];
+		}
+		if (!empty($subject->address)) {
+			$detailsRows[] = ['label' => _l('client_address') ?: _l('address') ?: 'Address', 'value' => (string)$subject->address];
+		}
+		if (!empty($subject->city)) {
+			$detailsRows[] = ['label' => _l('lims_subject_city') ?: _l('city') ?: 'City', 'value' => (string)$subject->city];
+		}
+		if (!empty($subject->zip)) {
+			$detailsRows[] = ['label' => _l('lims_subject_zip') ?: _l('zip') ?: 'ZIP', 'value' => (string)$subject->zip];
+		}
+
+		$data['subject_details_card_title'] = ($detailsTitleByType[$subjectType] ?? ucfirst($subjectType)) . ' Details';
+		$data['subject_details_rows']       = $detailsRows;
+		$data['subject_type_normalized']    = $subjectType;
+
+		// Keep existing UI behavior intact:
+		// Many installations render Subject Details only for "patient" type in the profile view.
+		// To keep the same UI and still show details for all subject types, provide a display copy
+		// normalized as patient while preserving the real type in separate data key.
+		$subjectForView = clone $subject;
+		$realSubjectType = strtolower((string)($subjectForView->subject_type ?? ''));
+		if ($realSubjectType !== 'patient') {
+			$subjectForView->subject_type = 'patient';
+			if (empty($subjectForView->first_name) && !empty($subjectForView->subject_name)) {
+				$subjectForView->first_name = $subjectForView->subject_name;
+			}
+		}
+
+		$data['subject']               = $subjectForView;
+		$data['subject_real_type']     = $realSubjectType;
 		$data['client']  = $client;
 		$data['orders']  = $orders;
 		$data['samples'] = $samples;
