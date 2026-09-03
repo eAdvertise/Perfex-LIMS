@@ -1,128 +1,62 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
 
 $aColumns = [
-    's.id as subject_id',
-    's.first_name as first_name',
-    's.last_name as last_name',
-    's.subject_name as subject_name',
-    's.subject_type as subject_type',
-    's.internal_code as internal_code',
-    's.client_id as subject_client_id',
-    's.created_at as created_at',
+    's.id',
+    's.internal_code',
+    's.subject_name',
+    's.subject_type',
+    's.email',
+    's.phone',
+    's.active',
 ];
-
-$sIndexColumn = 'id';
-$sTable       = db_prefix() . 'lims_subjects AS s';
-
-$join = [
-    'LEFT JOIN ' . db_prefix() . 'clients AS c ON c.userid = s.client_id',
-];
-
+$sIndexColumn = 's.id';
+$sTable = db_prefix() . 'lims_subjects AS s';
+$join = ['LEFT JOIN ' . db_prefix() . 'clients AS c ON c.userid = s.client_id'];
 $where = [];
+if ($this->ci->db->field_exists('is_deleted', db_prefix() . 'lims_subjects')) {
+    $where[] = 'AND s.is_deleted = 0';
+}
 
-// επιπλέον πεδία που θέλουμε στο result
-$additionalSelect = [
+$result = data_tables_init($aColumns, $sIndexColumn, $sTable, $join, $where, [
+    's.first_name',
+    's.last_name',
+    's.client_id',
+    's.id AS subject_id',
     'c.company AS client_company',
-];
+]);
+$output = $result['output'];
+$rows = $result['rResult'];
+$canManage = has_permission('lims', '', 'manage_orders') || has_permission('lims', '', 'admin');
 
-$result  = data_tables_init($aColumns, $sIndexColumn, $sTable, $join, $where, $additionalSelect);
-$output  = $result['output'];
-$rResult = $result['rResult'];
-
-foreach ($rResult as $aRow) {
-    $row = [];
-
-    // ID
-    $id = isset($aRow['subject_id']) ? (int) $aRow['subject_id'] : 0;
-    $row[] = $id;
-
-    // -------- SUBJECT NAME ----------
-    $first   = isset($aRow['first_name'])     ? trim($aRow['first_name'])     : '';
-    $last    = isset($aRow['last_name'])      ? trim($aRow['last_name'])      : '';
-    $sname   = isset($aRow['subject_name'])   ? trim($aRow['subject_name'])   : '';
-    $stype   = isset($aRow['subject_type'])   ? trim($aRow['subject_type'])   : '';
-    $company = isset($aRow['client_company']) ? trim($aRow['client_company']) : '';
-
-    $displayName = '';
-
-    if ($stype === 'patient') {
-        // patient: 1) first+last
-        if ($first !== '' || $last !== '') {
-            $displayName = trim($first . ' ' . $last);
-        }
-        // 2) αλλιώς → client company (existing customer)
-        elseif ($company !== '') {
-            $displayName = $company;
-        }
-        // 3) fallback → subject_name
-        elseif ($sname !== '') {
-            $displayName = $sname;
-        }
-    } else {
-        // non-patient: 1) subject_name
-        if ($sname !== '') {
-            $displayName = $sname;
-        }
-        // 2) company
-        elseif ($company !== '') {
-            $displayName = $company;
-        }
-        // 3) first+last
-        elseif ($first !== '' || $last !== '') {
-            $displayName = trim($first . ' ' . $last);
-        }
+foreach ($rows as $row) {
+    $data = [];
+    $id = (int)$row['subject_id'];
+    $display = trim((string)$row['subject_name']);
+    if ($display === '') {
+        $display = trim((string)$row['first_name'] . ' ' . (string)$row['last_name']);
+    }
+    if ($display === '') {
+        $display = '#' . $id;
     }
 
-    if ($displayName === '') {
-        $displayName = '#' . $id;
+    $data[] = $id;
+    $data[] = html_escape((string)$row['internal_code']);
+    $data[] = '<a href="' . admin_url('lims/subjects/view/' . $id) . '">' . html_escape($display) . '</a>'
+        . (!empty($row['client_company']) ? '<div class="row-options">' . html_escape($row['client_company']) . '</div>' : '');
+    $data[] = html_escape((string)$row['subject_type']);
+    $data[] = html_escape((string)$row['email']);
+    $data[] = html_escape((string)$row['phone']);
+    $data[] = (int)$row['active'] === 1
+        ? '<span class="label label-success">' . _l('active') . '</span>'
+        : '<span class="label label-default">' . _l('inactive') . '</span>';
+
+    $options = '<a href="' . admin_url('lims/subjects/view/' . $id) . '" class="btn btn-default btn-sm"><i class="fa fa-eye"></i></a> ';
+    if ($canManage) {
+        $options .= '<a href="' . admin_url('lims/subjects/create/' . $id) . '" class="btn btn-default btn-sm"><i class="fa fa-pencil"></i></a> ';
+        $options .= '<a href="' . admin_url('lims/subjects/delete/' . $id) . '" class="btn btn-danger btn-sm js-lims-subject-delete" data-subject-id="' . $id . '"><i class="fa fa-trash"></i></a>';
     }
-
-    $row[] = '<a href="' . admin_url('lims/subjects/view/' . $id) . '">'
-           . html_escape($displayName)
-           . '</a>';
-
-    // -------- CUSTOMER ----------
-    $clientId = isset($aRow['subject_client_id']) ? (int) $aRow['subject_client_id'] : 0;
-
-    if ($clientId > 0) {
-        $label = $company !== ''
-            ? $company . ' (#' . $clientId . ')'
-            : '#' . $clientId;
-
-        $row[] = '<a href="' . admin_url('clients/client/' . $clientId) . '">'
-               . html_escape($label)
-               . '</a>';
-    } else {
-        $row[] = '<span class="text-muted">—</span>';
-    }
-
-    // -------- TYPE ----------
-    $typeLabel = $stype !== '' ? ucfirst($stype) : '—';
-    $row[] = html_escape($typeLabel);
-
-    // -------- INTERNAL CODE ----------
-    $code = isset($aRow['internal_code']) ? trim($aRow['internal_code']) : '';
-    $row[] = $code !== ''
-        ? html_escape($code)
-        : '<span class="text-muted">—</span>';
-
-    // -------- CREATED AT ----------
-    if (!empty($aRow['created_at']) && $aRow['created_at'] != '0000-00-00 00:00:00') {
-        $row[] = _dt($aRow['created_at']);
-    } else {
-        $row[] = '<span class="text-muted">—</span>';
-    }
-
-    // -------- OPTIONS ----------
-    $options  = '<a href="' . admin_url('lims/subjects/view/' . $id) . '" class="btn btn-default btn-sm">';
-    $options .= '<i class="fa fa-eye"></i> ' . _l('view') . '</a> ';
-
-    $options .= '<a href="' . admin_url('lims/subjects/create/' . $id) . '" class="btn btn-default btn-sm">';
-    $options .= '<i class="fa fa-pencil-square-o"></i></a>';
-
-    $row[] = $options;
-
-    $output['aaData'][] = $row;
+    $data[] = $options;
+    $output['aaData'][] = $data;
 }
 
 echo json_encode($output);

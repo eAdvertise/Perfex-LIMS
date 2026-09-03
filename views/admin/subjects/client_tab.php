@@ -27,7 +27,7 @@ $subjects = $CI->db->get()->result();
     <div class="col-md-12">
         <div class="mbot15">
             <?php if (has_permission('lims', '', 'manage_orders') || has_permission('lims', '', 'admin')): ?>
-                <a href="<?php echo admin_url('lims/subjects/create'); ?>" class="btn btn-primary">
+                <a href="<?php echo admin_url('lims/subjects/create?client_id=' . (int)$client_id); ?>" class="btn btn-primary">
                     <i class="fa fa-plus"></i> <?php echo _l('new'); ?>
                 </a>
             <?php endif; ?>
