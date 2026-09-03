@@ -22,22 +22,6 @@ class Subjects extends AdminController
             access_denied('lims');
         }
 
-        $p = db_prefix();
-
-        // Φέρνουμε όλα τα subjects + client company (αν υπάρχει)
-        $this->db
-            ->select('s.*, c.company AS client_company')
-            ->from($p . 'lims_subjects AS s')
-            ->join($p . 'clients AS c', 'c.userid = s.client_id', 'left')
-            ->order_by('s.id', 'DESC');
-
-        if ($this->db->field_exists('is_deleted', $p . 'lims_subjects')) {
-            $this->db->where('s.is_deleted', 0);
-        }
-
-        $rows = $this->db->get()->result();
-
-        $data['rows']  = $rows;
         $data['title'] = _l('lims_subjects');
 
         $this->load->view('lims/admin/subjects/manage', $data);
@@ -191,8 +175,12 @@ class Subjects extends AdminController
 			->get()->result_array();
 
 		$data['subject'] = $subject;
+		if (!$subject && (int)$this->input->get('client_id') > 0) {
+			$data['subject'] = (object)['client_id' => (int)$this->input->get('client_id'), 'active' => 1];
+		}
 		$data['internal_code'] = $subject_code;
 		$data['clients'] = $clients;
+		$data['countries'] = get_all_countries();
 
 		// Active languages from Setup -> Settings -> Localization (Enabled Languages / Disable Languages)
 		$data['languages'] = $this->subjects_model->get_active_languages_dropdown();
@@ -334,7 +322,15 @@ class Subjects extends AdminController
 
 		// NOTES (τύπος lims_subject)
 		if ($group === 'notes') {
-			$data['user_notes'] = $this->misc_model->get_notes($id, 'lims_subject');
+			$data['user_notes'] = $this->db
+				->select('n.*, s.firstname, s.lastname')
+				->from(db_prefix() . 'notes AS n')
+				->join(db_prefix() . 'staff AS s', 's.staffid = n.addedfrom', 'left')
+				->where('n.rel_id', $id)
+				->where('n.rel_type', 'lims_subject')
+				->order_by('n.dateadded', 'DESC')
+				->get()
+				->result_array();
 		}
 		// REMINDERS (τύπος lims_subject)
 		if ($group === 'reminders') {
@@ -434,118 +430,100 @@ class Subjects extends AdminController
 			ajax_access_denied();
 		}
 
-		// λέμε στο Perfex να φορτώσει το view modules/lims/views/admin/subjects/table.php
 		$this->app->get_table_data(module_views_path('lims', 'admin/subjects/table'));
 	}
-	public function upload_attachment($id)
+
+	public function add_note($id)
 	{
-		if (!has_permission('lims', '', 'view')) {
+		if (!has_permission('lims', '', 'manage_orders') && !has_permission('lims', '', 'admin')) {
 			access_denied('lims');
 		}
 
-		$id = (int) $id;
-		if ($id <= 0) {
+		$id = (int)$id;
+		$description = trim((string)$this->input->post('description', true));
+		if ($id > 0 && $description !== '' && $this->subjects_model->get($id)) {
+			$this->db->insert(db_prefix() . 'notes', [
+				'rel_id' => $id,
+				'rel_type' => 'lims_subject',
+				'description' => $description,
+				'addedfrom' => get_staff_user_id(),
+				'dateadded' => date('Y-m-d H:i:s'),
+			]);
+			set_alert($this->db->affected_rows() > 0 ? 'success' : 'danger', $this->db->affected_rows() > 0 ? _l('added_successfully') : _l('problem_adding'));
+		}
+
+		redirect(admin_url('lims/subjects/view/' . $id . '?group=notes'));
+	}
+
+	public function delete_note($subject_id, $note_id)
+	{
+		if (!has_permission('lims', '', 'manage_orders') && !has_permission('lims', '', 'admin')) {
+			access_denied('lims');
+		}
+
+		$this->db->where('id', (int)$note_id)
+			->where('rel_id', (int)$subject_id)
+			->where('rel_type', 'lims_subject')
+			->delete(db_prefix() . 'notes');
+
+		redirect(admin_url('lims/subjects/view/' . (int)$subject_id . '?group=notes'));
+	}
+
+	public function upload_attachment($id)
+	{
+		if (!has_permission('lims', '', 'manage_orders') && !has_permission('lims', '', 'admin')) {
+			access_denied('lims');
+		}
+
+		$id = (int)$id;
+		if ($id <= 0 || !$this->subjects_model->get($id)) {
 			show_404();
 		}
 
-		if (!isset($_FILES['file'])) {
-			return;
-		}
-
-		// === 1) ΒΑΣΙΚΟΣ ΦΑΚΕΛΟΣ ΓΙΑ ΟΛΑ ΤΑ SUBJECTS ===
-		$base = FCPATH . 'uploads/lims_subjects/';
-
-		// Αν δεν υπάρχει ο /uploads/lims_subjects, τον φτιάχνουμε εμείς
-		if (!is_dir($base)) {
-			// recursive = true για να δημιουργήσει και τα ενδιάμεσα
-			@mkdir($base, 0755, true);
-			// index.html για λόγους security, όπως κάνει και το core
-			@fopen(rtrim($base, '/') . '/index.html', 'w');
-		}
-
-		// === 2) ΦΑΚΕΛΟΣ ΓΙΑ ΣΥΓΚΕΚΡΙΜΕΝΟ SUBJECT ===
-		$path = $base . $id . '/';
-
-		// Από εδώ και κάτω μπορεί να αναλάβει το core helper
-		if (
-			isset($_FILES['file']['name']) &&
-			($_FILES['file']['name'] != '' || (is_array($_FILES['file']['name']) && count($_FILES['file']['name']) > 0))
-		) {
+		if (isset($_FILES['file']['name']) && $_FILES['file']['name'] !== '') {
 			if (!is_array($_FILES['file']['name'])) {
-				$_FILES['file']['name']     = [$_FILES['file']['name']];
-				$_FILES['file']['type']     = [$_FILES['file']['type']];
-				$_FILES['file']['tmp_name'] = [$_FILES['file']['tmp_name']];
-				$_FILES['file']['error']    = [$_FILES['file']['error']];
-				$_FILES['file']['size']     = [$_FILES['file']['size']];
+				foreach (['name', 'type', 'tmp_name', 'error', 'size'] as $key) {
+					$_FILES['file'][$key] = [$_FILES['file'][$key]];
+				}
 			}
 
-			// Fix στα indexes (0,2 → 0,1 κλπ)
 			_file_attachments_index_fix('file');
+			$path = FCPATH . 'uploads/lims_subjects/' . $id . '/';
+			_maybe_create_upload_path($path);
 
-			for ($i = 0; $i < count($_FILES['file']['name']); $i++) {
-
-				// Error ή μη επιτρεπτό extension → skip
-				if (_perfex_upload_error($_FILES['file']['error'][$i])
-					|| !_upload_extension_allowed($_FILES['file']['name'][$i])) {
+			foreach ($_FILES['file']['name'] as $index => $originalName) {
+				if (_perfex_upload_error($_FILES['file']['error'][$index]) || !_upload_extension_allowed($originalName)) {
 					continue;
 				}
 
-				$tmpFilePath = $_FILES['file']['tmp_name'][$i];
-				if (empty($tmpFilePath)) {
+				$filename = unique_filename($path, $originalName);
+				if (!move_uploaded_file($_FILES['file']['tmp_name'][$index], $path . $filename)) {
 					continue;
 				}
-
-				// Δημιουργεί τον φάκελο /uploads/lims_subjects/{id}/ αν λείπει
-				_maybe_create_upload_path($path);
-
-				// Μοναδικό όνομα αρχείου
-				$filename    = unique_filename($path, $_FILES['file']['name'][$i]);
-				$newFilePath = $path . $filename;
-
-				if (move_uploaded_file($tmpFilePath, $newFilePath)) {
-
-					// Αν είναι εικόνα, φτιάξε thumbnail (χρησιμοποιούμε DIR, όχι full path)
-					if (is_image($newFilePath)) {
-						create_img_thumb($path, $filename);
-					}
-
-					// Προετοιμασία εγγραφής για tblfiles
-					$attachment   = [];
-					$attachment[] = [
-						'file_name' => $filename,
-						'filetype'  => $_FILES['file']['type'][$i],
-					];
-
-					// Αποθήκευση στη βάση με rel_type = 'lims_subject'
-					$this->misc_model->add_attachment_to_database($id, 'lims_subject', $attachment);
+				if (is_image($path . $filename)) {
+					create_img_thumb($path, $filename);
 				}
+				$this->misc_model->add_attachment_to_database($id, 'lims_subject', [[
+					'file_name' => $filename,
+					'filetype' => $_FILES['file']['type'][$index],
+				]]);
 			}
 		}
 
-		// Dropzone είναι οκ με 200 response, δεν χρειάζεται να κάνουμε echo
+		redirect(admin_url('lims/subjects/view/' . $id . '?group=files'));
 	}
-
-
 
 	public function add_external_attachment()
 	{
-		if (!has_permission('lims', '', 'view')) {
+		if (!has_permission('lims', '', 'manage_orders') && !has_permission('lims', '', 'admin')) {
 			access_denied('lims');
 		}
 
-		$subject_id = (int) $this->input->post('subject_id');
-		$files      = $this->input->post('files');
-		$external   = (int) $this->input->post('external');
-
-		if ($subject_id > 0 && $files) {
-			$this->load->model('misc_model');
-
-			$this->misc_model->add_attachment_to_database(
-				$subject_id,
-				'lims_subject',
-				$files,
-				$external
-			);
+		$subject_id = (int)$this->input->post('subject_id');
+		$files = $this->input->post('files');
+		$external = (int)$this->input->post('external');
+		if ($subject_id > 0 && $files && $this->subjects_model->get($subject_id)) {
+			$this->misc_model->add_attachment_to_database($subject_id, 'lims_subject', $files, $external);
 		}
 
 		redirect(admin_url('lims/subjects/view/' . $subject_id . '?group=files'));
@@ -553,18 +531,32 @@ class Subjects extends AdminController
 
 	public function delete_attachment($subject_id, $attachment_id)
 	{
-		if (!has_permission('lims', '', 'view')) {
+		if (!has_permission('lims', '', 'manage_orders') && !has_permission('lims', '', 'admin')) {
 			access_denied('lims');
 		}
 
-		$subject_id    = (int)$subject_id;
+		$subject_id = (int)$subject_id;
 		$attachment_id = (int)$attachment_id;
+		$attachment = $this->db
+			->where('id', $attachment_id)
+			->where('rel_type', 'lims_subject')
+			->where('rel_id', $subject_id)
+			->get(db_prefix() . 'files')
+			->row();
 
-		// Σβήνουμε από tblfiles μόνο αν όντως ανήκει σε lims_subject & σωστό subject
-		$this->db->where('id', $attachment_id);
-		$this->db->where('rel_type', 'lims_subject');
-		$this->db->where('rel_id', $subject_id);
-		$this->db->delete(db_prefix() . 'files');
+		if ($attachment) {
+			if (empty($attachment->external)) {
+				$path = FCPATH . 'uploads/lims_subjects/' . $subject_id . '/' . basename($attachment->file_name);
+				if (is_file($path)) {
+					unlink($path);
+				}
+				$thumb = dirname($path) . '/thumb_' . basename($attachment->file_name);
+				if (is_file($thumb)) {
+					unlink($thumb);
+				}
+			}
+			$this->db->where('id', $attachment_id)->delete(db_prefix() . 'files');
+		}
 
 		redirect(admin_url('lims/subjects/view/' . $subject_id . '?group=files'));
 	}
