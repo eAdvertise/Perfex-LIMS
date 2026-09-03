@@ -23,7 +23,7 @@ $route['admin/lims/save_contract']              = 'lims/save_contract';
 $route['admin/lims/delete_contract/(:num)']     = 'lims/delete_contract/$1';
 $route['admin/lims/toggle_contract_status']     = 'lims/toggle_contract_status';
 
-/* Appointments (stubs/expand later) */
+/* Appointments */
 $route['admin/lims/appointments']               = 'lims/appointments';
 $route['admin/lims/appointments/create']        = 'lims/create_appointment';
 

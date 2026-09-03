@@ -29,7 +29,7 @@ class Lims extends AdminController
         redirect(admin_url('lims/orders'));
     }
 
-    /* ===================== ORDERS (stubs) ===================== */
+    /* ===================== ORDERS ===================== */
 
     public function orders($action = null, $id = null)
     {
@@ -124,7 +124,7 @@ class Lims extends AdminController
 		if (!has_permission('lims','','billing')) { access_denied('Lims'); }
 
 		if ($action === 'create') { return $this->create_contract($id); }
-		if ($action === 'save')   { return $this->save_contract($id); } // <-- πρόσθεσε αυτή τη γραμμή
+		if ($action === 'save')   { return $this->save_contract($id); }
 
 		$data['title']     = _l('lims_contracts');
 		$data['contracts'] = $this->lims_contracts_model->all();
