@@ -66,7 +66,6 @@ if (!$default_country) {
 								<?php
 									$sel = ($selected_subject_id === (int)$s->id) ? 'selected' : ''; 
 								  // === ΚΥΡΙΑ ΓΡΑΜΜΗ (όνομα subject) ===
-								  // Προσαρμόζεις τα πεδία σύμφωνα με το table σου.
 								  $main = '';
 
 								  // Αν έχεις firstname/lastname:
@@ -74,11 +73,9 @@ if (!$default_country) {
 									$main = trim(($s->last_name ?? '') . ' ' . ($s->first_name ?? ''));
 								  }
 
-								  // Εναλλακτικά display_name / name / code
+								  // Εναλλακτικά subject name / internal code
 								  if ($main === '') {
 									if (!empty($s->subject_name)) {
-									  $main = $s->subject_name;
-									} elseif (!empty($s->subject_name)) {
 									  $main = $s->subject_name;
 									} elseif (!empty($s->internal_code)) {
 									  $main = $s->internal_code;
@@ -88,11 +85,10 @@ if (!$default_country) {
 								  }
 
 								  // === ΔΕΥΤΕΡΗ ΓΡΑΜΜΗ (subtext) ===
-								  // TODO: προσαρμόζεις τα ονόματα στηλών στον δικό σου πίνακα:
-								  $social_insur = $s->social_insurance_no ?? '';     // π.χ. column id_passport ή id_number
-								  $id_passport  = $s->id_number ?? '';     // π.χ. column id_passport ή id_number
-								  $internal     = $s->internal_code   ?? $s->code      ?? '';     // π.χ. column internal_code ή code
-								  $email        = $s->email           ?? '';                      // column email
+								  $social_insur = $s->social_insurance_no ?? '';
+								  $id_passport  = $s->id_number ?? '';
+								  $internal     = $s->internal_code ?? '';
+								  $email        = $s->email ?? '';
 
 								  $subParts = [];
 
