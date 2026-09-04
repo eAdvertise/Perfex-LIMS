@@ -589,6 +589,9 @@ $lang['lims_subject_name_help']             = 'Χρησιμοποιείται κ
 
 $lang['lims_subject_first_name']            = 'Όνομα';
 $lang['lims_subject_last_name']             = 'Επώνυμο';
+$lang['first_name']                         = 'Όνομα';
+$lang['last_name']                          = 'Επώνυμο';
+$lang['date_of_birth']                      = 'Ημερομηνία γέννησης';
 
 $lang['lims_subject_code']                  = 'Εσωτερικός κωδικός';
 $lang['lims_subject_id_number']             = 'Αρ. ταυτότητας / διαβατηρίου';
@@ -941,3 +944,17 @@ $lang['lims_subject_details'] = 'Πληροφορίες';
 $lang['customer_profile'] = 'Πελάτης';
 $lang['lims_subject_receipts_or_payments'] = 'Αποδείξεις';
 $lang['delivery_notes'] = 'Delivery Notes';
+
+$lang['lims_dashboard_overview'] = 'Επισκόπηση LIMS';
+$lang['lims_dashboard_orders_today'] = 'Σημερινές παραγγελίες';
+$lang['lims_dashboard_pending_samples'] = 'Δείγματα σε αναμονή';
+$lang['lims_dashboard_tests_progress'] = 'Εξετάσεις σε εξέλιξη';
+$lang['lims_dashboard_ready_to_sign'] = 'Έτοιμα για υπογραφή';
+$lang['lims_dashboard_overdue'] = 'Εκπρόθεσμα';
+$lang['lims_dashboard_completed_today'] = 'Ολοκληρώθηκαν σήμερα';
+$lang['lims_dashboard_attention_orders'] = 'Παραγγελίες που απαιτούν προσοχή';
+$lang['lims_dashboard_review_sign'] = 'Έλεγχος';
+$lang['lims_dashboard_todays_appointments'] = 'Σημερινά ραντεβού';
+
+$lang['lims_dashboard_orders_by_status'] = 'Παραγγελίες ανά κατάσταση';
+$lang['lims_dashboard_recent_activity'] = 'Πρόσφατη δραστηριότητα LIMS';
