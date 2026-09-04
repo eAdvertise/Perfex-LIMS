@@ -135,6 +135,13 @@ function lims_module_update($module)
  */
 function lims_run_migrations()
 {
+    static $hasRun = false;
+
+    // Activation/update hooks can be triggered in the same request. Loading a
+    // migration class twice causes a fatal "class name is already in use" error.
+    if ($hasRun) {
+        return;
+    }
     $CI = &get_instance();
 
     if (!class_exists('App_module_migration')) {
@@ -145,29 +152,9 @@ function lims_run_migrations()
     $CI->load->library('app_module_migration');
 
     $migrator = $CI->app_module_migration;
+    $hasRun = true;
 
-    // ---- NEW API πιθανόν: migrate($moduleName) ----
-    if (method_exists($migrator, 'migrate')) {
-        try {
-            // Ελέγχουμε πόσα required arguments έχει η migrate()
-            $rm = new ReflectionMethod($migrator, 'migrate');
-            $required = $rm->getNumberOfRequiredParameters();
-
-            if ($required >= 1) {
-                // migrate('lims')
-                $migrator->migrate(LIMS_MODULE_NAME);
-                return;
-            } else {
-                // migrate()
-                $migrator->migrate();
-                return;
-            }
-        } catch (Throwable $e) {
-            // Αν κάτι σκάσει, συνεχίζουμε σε fallback API πιο κάτω
-        }
-    }
-
-    // ---- ΠΙΟ ΠΑΛΙΟ API: set_module / set_path / run ή migrate() χωρίς args ----
+    // Configure older migration APIs before invoking them.
     if (method_exists($migrator, 'set_module')) {
         $migrator->set_module(LIMS_MODULE_NAME);
     }
@@ -175,11 +162,18 @@ function lims_run_migrations()
         $migrator->set_path(__DIR__ . '/migrations/');
     }
 
+    if (method_exists($migrator, 'migrate')) {
+        $method = new ReflectionMethod($migrator, 'migrate');
+        if ($method->getNumberOfParameters() >= 1) {
+            $migrator->migrate(LIMS_MODULE_NAME);
+        } else {
+            $migrator->migrate();
+        }
+        return;
+    }
+
     if (method_exists($migrator, 'run')) {
         $migrator->run();
-    } elseif (method_exists($migrator, 'migrate')) {
-        // Αν φτάσαμε εδώ, χρησιμοποιούμε migrate() χωρίς args
-        $migrator->migrate();
     }
 }
 
