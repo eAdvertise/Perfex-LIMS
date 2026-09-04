@@ -15,7 +15,7 @@
                         </div>
 
                         <div class="table-responsive">
-                            <table class="table dt-table">
+                            <table class="table table-striped table-subjects">
                                 <thead>
                                 <tr>
                                     <th>#</th>
