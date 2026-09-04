@@ -681,6 +681,65 @@ class Subjects extends AdminController
 		die;
 	}
 
+	public function toggle_status()
+	{
+		if (!is_staff_logged_in() || (!has_permission('lims', '', 'manage_orders') && !has_permission('lims', '', 'admin'))) {
+			echo json_encode(['success' => false, 'message' => 'Access denied.']);
+			die;
+		}
+
+		$id = (int)$this->input->post('id');
+		$active = (int)$this->input->post('active') === 1;
+		$success = $id > 0 && $this->subjects_model->get($id)
+			? $this->subjects_model->set_active($id, $active)
+			: false;
+
+		echo json_encode(['success' => (bool)$success]);
+		die;
+	}
+
+	public function bulk_action()
+	{
+		if (!is_staff_logged_in() || (!has_permission('lims', '', 'manage_orders') && !has_permission('lims', '', 'admin'))) {
+			echo json_encode(['success' => false, 'message' => 'Access denied.']);
+			die;
+		}
+
+		$action = (string)$this->input->post('action');
+		$ids = array_values(array_unique(array_filter(array_map('intval', (array)$this->input->post('ids')))));
+		if (!$ids || !in_array($action, ['active', 'inactive', 'delete'], true)) {
+			echo json_encode(['success' => false, 'message' => 'Invalid bulk action.']);
+			die;
+		}
+
+		$updated = 0;
+		foreach ($ids as $id) {
+			if (!$this->subjects_model->get($id) || $this->subjects_model->is_marked_deleted($id)) {
+				continue;
+			}
+
+			if ($action === 'delete') {
+				$counts = $this->subjects_model->get_linked_counts($id);
+				$success = array_sum(array_map('intval', $counts)) > 0
+					? $this->subjects_model->delete_with_links($id)
+					: $this->subjects_model->delete_subject_only($id);
+			} else {
+				$success = $this->subjects_model->set_active($id, $action === 'active');
+			}
+
+			if ($success) {
+				$updated++;
+			}
+		}
+
+		echo json_encode([
+			'success' => $updated === count($ids),
+			'updated' => $updated,
+			'requested' => count($ids),
+		]);
+		die;
+	}
+
 	public function delete($id)
 	{
 		if (!has_permission('lims', '', 'manage_orders') && !has_permission('lims', '', 'admin')) {
