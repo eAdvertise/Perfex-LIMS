@@ -617,6 +617,9 @@ $lang['lims_subject_name_help']             = 'Used mainly for non-patient subje
 
 $lang['lims_subject_first_name']            = 'First name';
 $lang['lims_subject_last_name']             = 'Last name';
+$lang['first_name']                         = 'First name';
+$lang['last_name']                          = 'Last name';
+$lang['date_of_birth']                      = 'Date of birth';
 
 $lang['lims_subject_code']                  = 'Internal code';
 $lang['lims_subject_id_number']             = 'ID / Passport number';
