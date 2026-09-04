@@ -1011,3 +1011,6 @@ $lang['lims_dashboard_uninvoiced_orders'] = 'Uninvoiced orders';
 $lang['lims_dashboard_draft_invoices'] = 'Draft invoices';
 $lang['lims_dashboard_unpaid_invoices'] = 'Unpaid invoices';
 $lang['lims_dashboard_overdue_invoices'] = 'Overdue invoices';
+
+$lang['lims_dashboard_my_assigned_tests'] = 'My assigned tests';
+$lang['lims_dashboard_no_assigned_tests'] = 'You have no pending assigned tests.';

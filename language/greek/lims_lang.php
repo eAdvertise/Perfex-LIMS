@@ -982,3 +982,6 @@ $lang['lims_dashboard_uninvoiced_orders'] = 'Μη τιμολογημένες π�
 $lang['lims_dashboard_draft_invoices'] = 'Πρόχειρα τιμολόγια';
 $lang['lims_dashboard_unpaid_invoices'] = 'Ανεξόφλητα τιμολόγια';
 $lang['lims_dashboard_overdue_invoices'] = 'Εκπρόθεσμα τιμολόγια';
+
+$lang['lims_dashboard_my_assigned_tests'] = 'Οι ανατεθειμένες εξετάσεις μου';
+$lang['lims_dashboard_no_assigned_tests'] = 'Δεν έχετε εκκρεμείς ανατεθειμένες εξετάσεις.';
