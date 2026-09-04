@@ -1003,3 +1003,11 @@ $lang['lims_dashboard_vs_previous_period'] = 'vs previous period';
 $lang['lims_dashboard_activity_trend'] = 'Orders & samples trend';
 $lang['lims_dashboard_last_14_days'] = 'Last 14 days';
 $lang['lims_dashboard_reports'] = 'Reports';
+
+$lang['lims_dashboard_critical_results'] = 'Critical & abnormal results';
+$lang['lims_dashboard_no_abnormal_results'] = 'No abnormal results found.';
+$lang['lims_dashboard_billing_summary'] = 'LIMS billing summary';
+$lang['lims_dashboard_uninvoiced_orders'] = 'Uninvoiced orders';
+$lang['lims_dashboard_draft_invoices'] = 'Draft invoices';
+$lang['lims_dashboard_unpaid_invoices'] = 'Unpaid invoices';
+$lang['lims_dashboard_overdue_invoices'] = 'Overdue invoices';

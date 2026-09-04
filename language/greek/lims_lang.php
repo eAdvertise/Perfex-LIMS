@@ -974,3 +974,11 @@ $lang['lims_dashboard_vs_previous_period'] = 'από την προηγούμεν
 $lang['lims_dashboard_activity_trend'] = 'Τάση παραγγελιών και δειγμάτων';
 $lang['lims_dashboard_last_14_days'] = 'Τελευταίες 14 ημέρες';
 $lang['lims_dashboard_reports'] = 'Reports';
+
+$lang['lims_dashboard_critical_results'] = 'Κρίσιμα και μη φυσιολογικά αποτελέσματα';
+$lang['lims_dashboard_no_abnormal_results'] = 'Δεν βρέθηκαν μη φυσιολογικά αποτελέσματα.';
+$lang['lims_dashboard_billing_summary'] = 'Σύνοψη τιμολόγησης LIMS';
+$lang['lims_dashboard_uninvoiced_orders'] = 'Μη τιμολογημένες παραγγελίες';
+$lang['lims_dashboard_draft_invoices'] = 'Πρόχειρα τιμολόγια';
+$lang['lims_dashboard_unpaid_invoices'] = 'Ανεξόφλητα τιμολόγια';
+$lang['lims_dashboard_overdue_invoices'] = 'Εκπρόθεσμα τιμολόγια';

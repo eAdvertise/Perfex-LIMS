@@ -264,4 +264,64 @@ class Lims_dashboard_model extends App_Model
 
         return array_values($series);
     }
+
+    public function critical_results($limit = 10)
+    {
+        $results = $this->table('results');
+        $tests = $this->table('tests');
+        $samples = $this->table('samples');
+        if (!$this->db->table_exists($results) || !$this->db->table_exists($tests) || !$this->db->table_exists($samples)) {
+            return [];
+        }
+
+        return $this->db
+            ->select('r.id, r.value_numeric, r.value_text, r.unit, r.flag, r.measured_at, t.id AS test_id, a.name AS analysis_name, s.order_id, o.order_barcode', false)
+            ->from($results . ' AS r')
+            ->join($tests . ' AS t', 't.id = r.test_id', 'inner')
+            ->join($this->table('analyses') . ' AS a', 'a.id = t.analysis_id', 'left')
+            ->join($samples . ' AS s', 's.id = t.sample_id', 'inner')
+            ->join($this->table('orders') . ' AS o', 'o.id = s.order_id', 'left')
+            ->where("r.id = (SELECT MAX(r2.id) FROM {$results} r2 WHERE r2.test_id = r.test_id)", null, false)
+            ->where_in('r.flag', ['L', 'H', 'LL', 'HH', 'A'])
+            ->order_by("FIELD(r.flag, 'LL', 'HH', 'A', 'L', 'H')", '', false)
+            ->order_by('r.measured_at', 'DESC')
+            ->limit((int)$limit)
+            ->get()->result();
+    }
+
+    public function billing_summary()
+    {
+        $orders = $this->table('orders');
+        $links = $this->table('billing_links');
+        $invoices = db_prefix() . 'invoices';
+        $summary = ['uninvoiced' => 0, 'draft' => 0, 'unpaid' => 0, 'overdue' => 0];
+        if (!$this->db->table_exists($orders) || !$this->db->table_exists($links) || !$this->db->table_exists($invoices)) {
+            return $summary;
+        }
+
+        $summary['uninvoiced'] = (int)$this->db
+            ->from($orders . ' AS o')
+            ->where_in('o.status', ['complete', 'signed', 'reported'])
+            ->where("NOT EXISTS (SELECT 1 FROM {$links} bl WHERE bl.order_id = o.id)", null, false)
+            ->count_all_results();
+
+        $rows = $this->db
+            ->select('i.status, COUNT(DISTINCT i.id) AS total', false)
+            ->from($links . ' AS bl')
+            ->join($invoices . ' AS i', 'i.id = bl.invoice_id', 'inner')
+            ->group_by('i.status')
+            ->get()->result();
+        foreach ($rows as $row) {
+            $status = (int)$row->status;
+            if ($status === 6) {
+                $summary['draft'] += (int)$row->total;
+            } elseif ($status === 4) {
+                $summary['overdue'] += (int)$row->total;
+            } elseif (in_array($status, [1, 3], true)) {
+                $summary['unpaid'] += (int)$row->total;
+            }
+        }
+
+        return $summary;
+    }
 }

@@ -2,12 +2,12 @@
 /*
 Module Name: LIMS Module
 Description: Laboratory Information Management System
-Version: 3.0.9
+Version: 3.1.0
 Requires at least: 3.4.*
 Author: eAdvertise
 */
 
-define('LIMS_MODULE_VERSION', '3.0.9');
+define('LIMS_MODULE_VERSION', '3.1.0');
 define('LIMS_MODULE_NAME', 'lims');
 
 register_activation_hook(LIMS_MODULE_NAME, 'lims_module_activation_hook');
@@ -255,6 +255,20 @@ function lims_register_dashboard_widgets($widgets)
         'path'      => 'lims/admin/dashboard/widgets/activity_trend',
         'container' => 'left-8',
     ];
+
+    if (has_permission('lims', '', 'enter_results') || has_permission('lims', '', 'verify') || has_permission('lims', '', 'approve') || has_permission('lims', '', 'admin')) {
+        $widgets[] = [
+            'path'      => 'lims/admin/dashboard/widgets/critical_results',
+            'container' => 'left-8',
+        ];
+    }
+
+    if (has_permission('lims', '', 'billing') || has_permission('lims', '', 'admin')) {
+        $widgets[] = [
+            'path'      => 'lims/admin/dashboard/widgets/billing_summary',
+            'container' => 'right-4',
+        ];
+    }
 
     return $widgets;
 }
