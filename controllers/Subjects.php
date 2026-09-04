@@ -23,15 +23,26 @@ class Subjects extends AdminController
         }
 
         $p = db_prefix();
+        $subjectsTable = $p . 'lims_subjects';
+        $perPage = 25;
+        $page = max(1, (int) $this->input->get('page'));
 
-        // Φέρνουμε όλα τα subjects + client company (αν υπάρχει)
+        $this->db->from($subjectsTable . ' AS s');
+        if ($this->db->field_exists('is_deleted', $subjectsTable)) {
+            $this->db->where('s.is_deleted', 0);
+        }
+        $totalRows = $this->db->count_all_results();
+        $totalPages = max(1, (int) ceil($totalRows / $perPage));
+        $page = min($page, $totalPages);
+
         $this->db
-            ->select('s.*, c.company AS client_company')
-            ->from($p . 'lims_subjects AS s')
+            ->select('s.id, s.internal_code, s.subject_name, s.first_name, s.last_name, s.subject_type, s.email, s.phone, s.active, c.company AS client_company')
+            ->from($subjectsTable . ' AS s')
             ->join($p . 'clients AS c', 'c.userid = s.client_id', 'left')
-            ->order_by('s.id', 'DESC');
+            ->order_by('s.id', 'DESC')
+            ->limit($perPage, ($page - 1) * $perPage);
 
-        if ($this->db->field_exists('is_deleted', $p . 'lims_subjects')) {
+        if ($this->db->field_exists('is_deleted', $subjectsTable)) {
             $this->db->where('s.is_deleted', 0);
         }
 
@@ -39,6 +50,8 @@ class Subjects extends AdminController
 
         $data['rows']  = $rows;
         $data['title'] = _l('lims_subjects');
+        $data['page'] = $page;
+        $data['total_pages'] = $totalPages;
 
         $this->load->view('lims/admin/subjects/manage', $data);
     }

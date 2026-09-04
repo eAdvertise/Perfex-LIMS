@@ -42,7 +42,14 @@
                                     <tr>
                                         <td><?php echo (int)$s->id; ?></td>
                                         <td><?php echo html_escape((string)($s->internal_code ?? '')); ?></td>
-                                        <td><?php echo html_escape($display); ?></td>
+                                        <td>
+                                            <a href="<?php echo admin_url('lims/subjects/view/' . (int)$s->id); ?>">
+                                                <?php echo html_escape($display); ?>
+                                            </a>
+                                            <?php if (!empty($s->client_company)): ?>
+                                                <div class="row-options"><?php echo html_escape((string)$s->client_company); ?></div>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><?php echo html_escape((string)($s->subject_type ?? '-')); ?></td>
                                         <td><?php echo html_escape((string)($s->email ?? '')); ?></td>
                                         <td><?php echo html_escape((string)($s->phone ?? '')); ?></td>
@@ -70,6 +77,19 @@
                                 </tbody>
                             </table>
                         </div>
+                        <?php if (($total_pages ?? 1) > 1): ?>
+                            <nav aria-label="<?php echo html_escape(_l('lims_subjects')); ?>">
+                                <ul class="pagination">
+                                    <?php if ($page > 1): ?>
+                                        <li><a href="<?php echo admin_url('lims/subjects') . '?page=' . ($page - 1); ?>">&laquo;</a></li>
+                                    <?php endif; ?>
+                                    <li class="active"><a href="#"><?php echo $page; ?> / <?php echo $total_pages; ?></a></li>
+                                    <?php if ($page < $total_pages): ?>
+                                        <li><a href="<?php echo admin_url('lims/subjects') . '?page=' . ($page + 1); ?>">&raquo;</a></li>
+                                    <?php endif; ?>
+                                </ul>
+                            </nav>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
