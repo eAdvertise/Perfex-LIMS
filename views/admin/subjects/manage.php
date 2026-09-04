@@ -19,13 +19,13 @@
                                 <thead>
                                 <tr>
                                     <th>#</th>
-                                    <th><?php echo _l('lims_subject_internal_code') ?: 'Code'; ?></th>
-                                    <th><?php echo _l('lims_subject_name') ?: _l('name'); ?></th>
-                                    <th><?php echo _l('lims_subject_type') ?: _l('type'); ?></th>
-                                    <th><?php echo _l('email'); ?></th>
+                                    <th><?php echo _l('lims_subject_internal_code') ?: 'Internal code'; ?></th>
+                                    <th><?php echo _l('name'); ?></th>
+                                    <th><?php echo _l('type'); ?></th>
+                                    <th><?php echo _l('client'); ?></th>
                                     <th><?php echo _l('phonenumber'); ?></th>
                                     <th><?php echo _l('status'); ?></th>
-                                    <th></th>
+                                    <th><?php echo _l('options'); ?></th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -41,10 +41,22 @@
                                     ?>
                                     <tr>
                                         <td><?php echo (int)$s->id; ?></td>
-                                        <td><?php echo html_escape((string)($s->internal_code ?? '')); ?></td>
+                                        <td>
+                                            <a href="<?php echo admin_url('lims/subjects/view/' . (int)$s->id); ?>">
+                                                <?php echo html_escape((string)($s->internal_code ?? '')); ?>
+                                            </a>
+                                        </td>
                                         <td><?php echo html_escape($display); ?></td>
                                         <td><?php echo html_escape((string)($s->subject_type ?? '-')); ?></td>
-                                        <td><?php echo html_escape((string)($s->email ?? '')); ?></td>
+                                        <td>
+                                            <?php if (!empty($s->client_id) && !empty($s->client_company)): ?>
+                                                <a href="<?php echo admin_url('clients/client/' . (int)$s->client_id); ?>">
+                                                    <?php echo html_escape($s->client_company); ?>
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="text-muted">&mdash;</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><?php echo html_escape((string)($s->phone ?? '')); ?></td>
                                         <td>
                                             <?php if ((int)$s->active === 1): ?>
