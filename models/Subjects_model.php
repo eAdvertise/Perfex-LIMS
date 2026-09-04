@@ -71,6 +71,13 @@ class Subjects_model extends App_Model
         return $row ? ((int)$row->is_deleted === 1) : false;
     }
 
+    public function set_active($id, $active)
+    {
+        return $this->db
+            ->where('id', (int)$id)
+            ->update($this->table, ['active' => (int)(bool)$active]);
+    }
+
     public function get_client($subject)
     {
         if (!$subject || empty($subject->client_id)) {

@@ -589,6 +589,9 @@ $lang['lims_subject_name_help']             = 'Χρησιμοποιείται κ
 
 $lang['lims_subject_first_name']            = 'Όνομα';
 $lang['lims_subject_last_name']             = 'Επώνυμο';
+$lang['first_name']                         = 'Όνομα';
+$lang['last_name']                          = 'Επώνυμο';
+$lang['date_of_birth']                      = 'Ημερομηνία γέννησης';
 
 $lang['lims_subject_code']                  = 'Εσωτερικός κωδικός';
 $lang['lims_subject_id_number']             = 'Αρ. ταυτότητας / διαβατηρίου';
@@ -941,3 +944,41 @@ $lang['lims_subject_details'] = 'Πληροφορίες';
 $lang['customer_profile'] = 'Πελάτης';
 $lang['lims_subject_receipts_or_payments'] = 'Αποδείξεις';
 $lang['delivery_notes'] = 'Delivery Notes';
+
+$lang['lims_dashboard_overview'] = 'Επισκόπηση LIMS';
+$lang['lims_dashboard_orders_today'] = 'Σημερινές παραγγελίες';
+$lang['lims_dashboard_pending_samples'] = 'Δείγματα σε αναμονή';
+$lang['lims_dashboard_tests_progress'] = 'Εξετάσεις σε εξέλιξη';
+$lang['lims_dashboard_ready_to_sign'] = 'Έτοιμα για υπογραφή';
+$lang['lims_dashboard_overdue'] = 'Εκπρόθεσμα';
+$lang['lims_dashboard_completed_today'] = 'Ολοκληρώθηκαν σήμερα';
+$lang['lims_dashboard_attention_orders'] = 'Παραγγελίες που απαιτούν προσοχή';
+$lang['lims_dashboard_review_sign'] = 'Έλεγχος';
+$lang['lims_dashboard_todays_appointments'] = 'Σημερινά ραντεβού';
+
+$lang['lims_dashboard_orders_by_status'] = 'Παραγγελίες ανά κατάσταση';
+$lang['lims_dashboard_recent_activity'] = 'Πρόσφατη δραστηριότητα LIMS';
+
+$lang['lims_dashboard_tests_by_department'] = 'Εξετάσεις ανά τμήμα';
+$lang['lims_dashboard_pending'] = 'Σε αναμονή';
+$lang['lims_dashboard_in_progress'] = 'Σε εξέλιξη';
+$lang['lims_dashboard_completed'] = 'Ολοκληρωμένες';
+$lang['lims_dashboard_unassigned'] = 'Χωρίς ανάθεση';
+
+$lang['lims_dashboard_turnaround_time'] = 'Χρόνος διεκπεραίωσης';
+$lang['lims_dashboard_last_30_days'] = 'Τελευταίες 30 ημέρες';
+$lang['lims_dashboard_average_completion'] = 'Μέσος χρόνος ολοκλήρωσης';
+$lang['lims_dashboard_on_time'] = 'Εντός προθεσμίας';
+$lang['lims_dashboard_completed_orders'] = 'Ολοκληρωμένες παραγγελίες';
+$lang['lims_dashboard_vs_previous_period'] = 'από την προηγούμενη περίοδο';
+$lang['lims_dashboard_activity_trend'] = 'Τάση παραγγελιών και δειγμάτων';
+$lang['lims_dashboard_last_14_days'] = 'Τελευταίες 14 ημέρες';
+$lang['lims_dashboard_reports'] = 'Reports';
+
+$lang['lims_dashboard_critical_results'] = 'Κρίσιμα και μη φυσιολογικά αποτελέσματα';
+$lang['lims_dashboard_no_abnormal_results'] = 'Δεν βρέθηκαν μη φυσιολογικά αποτελέσματα.';
+$lang['lims_dashboard_billing_summary'] = 'Σύνοψη τιμολόγησης LIMS';
+$lang['lims_dashboard_uninvoiced_orders'] = 'Μη τιμολογημένες παραγγελίες';
+$lang['lims_dashboard_draft_invoices'] = 'Πρόχειρα τιμολόγια';
+$lang['lims_dashboard_unpaid_invoices'] = 'Ανεξόφλητα τιμολόγια';
+$lang['lims_dashboard_overdue_invoices'] = 'Εκπρόθεσμα τιμολόγια';
