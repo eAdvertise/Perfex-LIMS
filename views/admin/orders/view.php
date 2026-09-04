@@ -96,7 +96,7 @@ foreach ($lims_status_rows as $st) {
                       if (!function_exists('format_invoice_number')) { $this->load->helper('invoices'); }
                       $invNo = function_exists('format_invoice_number') ? format_invoice_number($inv->id) : ('#'.$inv->id);
                       $invBtnHtml = '<a href="'.admin_url('invoices#'.(int)$inv->id).'" class="btn btn-success" target="_blank">'
-                                  . '<i class="fa fa-file-text-o"></i> '.$invNo.'</a>';
+                                  . '<i class="fa fa-file-text"></i> '.$invNo.'</a>';
                   }
               }
             ?>
@@ -121,7 +121,7 @@ foreach ($lims_status_rows as $st) {
 					<?php if (!$invBtnHtml): ?>
 						<div class="btn-group">
 							<button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
-								<i class="fa fa-file-text-o"></i> <?php echo _l('invoice_create'); ?> <span class="caret"></span>
+								<i class="fa fa-file-text"></i> <?php echo _l('invoice_create'); ?> <span class="caret"></span>
 							</button>
 							<ul class="dropdown-menu dropdown-menu-right">
 								<li>
@@ -149,7 +149,7 @@ foreach ($lims_status_rows as $st) {
 				<?php if (has_permission('estimates','','create')): ?>
 				  <a href="<?php echo admin_url('lims/orders/create_estimate/'.(int)$row->id); ?>"
 					 class="btn btn-default">
-					<i class="fa fa-file-o"></i>
+					<i class="fa fa-file"></i>
 					<?php
 					  echo _l('estimate_create')
 						?: (_l('create_estimate') ?: 'Create Estimate');
