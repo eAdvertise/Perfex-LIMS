@@ -351,4 +351,26 @@ class Lims_dashboard_model extends App_Model
             ->limit((int)$limit)
             ->get()->result();
     }
+
+    public function samples_requiring_action($limit = 10)
+    {
+        $samples = $this->table('samples');
+        if (!$this->db->table_exists($samples)) {
+            return [];
+        }
+
+        return $this->db
+            ->select("s.id, s.sample_uid, s.barcode, s.status, s.collected_at, s.received_at, st.name AS sample_type_name, o.id AS order_id, o.order_barcode, o.due_at, o.priority, COALESCE(NULLIF(sub.subject_name, ''), NULLIF(TRIM(CONCAT(COALESCE(sub.first_name, ''), ' ', COALESCE(sub.last_name, ''))), ''), '-') AS subject_name", false)
+            ->from($samples . ' AS s')
+            ->join($this->table('sample_types') . ' AS st', 'st.id = s.sample_type_id', 'left')
+            ->join($this->table('orders') . ' AS o', 'o.id = s.order_id', 'inner')
+            ->join($this->table('subjects') . ' AS sub', 'sub.id = COALESCE(s.subject_id, o.subject_id)', 'left', false)
+            ->where_in('s.status', ['draft', 'pending', 'collected'])
+            ->order_by('(o.due_at IS NOT NULL AND o.due_at < NOW())', 'DESC', false)
+            ->order_by('o.priority', 'DESC')
+            ->order_by("FIELD(s.status, 'collected', 'pending', 'draft')", '', false)
+            ->order_by('o.due_at', 'ASC')
+            ->limit((int)$limit)
+            ->get()->result();
+    }
 }

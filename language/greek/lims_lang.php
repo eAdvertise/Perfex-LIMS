@@ -985,3 +985,9 @@ $lang['lims_dashboard_overdue_invoices'] = 'Εκπρόθεσμα τιμολόγ�
 
 $lang['lims_dashboard_my_assigned_tests'] = 'Οι ανατεθειμένες εξετάσεις μου';
 $lang['lims_dashboard_no_assigned_tests'] = 'Δεν έχετε εκκρεμείς ανατεθειμένες εξετάσεις.';
+
+$lang['lims_dashboard_samples_requiring_action'] = 'Δείγματα που απαιτούν ενέργεια';
+$lang['lims_dashboard_next_action'] = 'Επόμενη ενέργεια';
+$lang['lims_dashboard_collect_sample'] = 'Συλλογή δείγματος';
+$lang['lims_dashboard_receive_sample'] = 'Παραλαβή στο εργαστήριο';
+$lang['lims_dashboard_no_pending_samples'] = 'Δεν υπάρχουν δείγματα που απαιτούν ενέργεια.';

@@ -1014,3 +1014,9 @@ $lang['lims_dashboard_overdue_invoices'] = 'Overdue invoices';
 
 $lang['lims_dashboard_my_assigned_tests'] = 'My assigned tests';
 $lang['lims_dashboard_no_assigned_tests'] = 'You have no pending assigned tests.';
+
+$lang['lims_dashboard_samples_requiring_action'] = 'Samples requiring action';
+$lang['lims_dashboard_next_action'] = 'Next action';
+$lang['lims_dashboard_collect_sample'] = 'Collect sample';
+$lang['lims_dashboard_receive_sample'] = 'Receive at lab';
+$lang['lims_dashboard_no_pending_samples'] = 'No samples require action.';
