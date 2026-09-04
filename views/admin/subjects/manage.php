@@ -1,5 +1,28 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 <?php init_head(); ?>
+<style>
+    .subjects-bulk-actions {
+        display: inline-flex;
+        align-items: stretch;
+        margin-left: 5px;
+        vertical-align: middle;
+    }
+
+    .subjects-bulk-actions .bootstrap-select {
+        order: 1;
+        margin: 0;
+    }
+
+    .subjects-bulk-actions .bootstrap-select > .dropdown-toggle {
+        border-radius: 4px 0 0 4px;
+    }
+
+    .subjects-bulk-actions #subjects-apply-bulk-action {
+        order: 2;
+        margin-left: -1px;
+        border-radius: 0 4px 4px 0;
+    }
+</style>
 <?php
 $canManage = has_permission('lims', '', 'manage_orders') || has_permission('lims', '', 'admin');
 $capitalizeHeading = static function ($heading) {
@@ -28,7 +51,7 @@ $capitalizeHeading = static function ($heading) {
                                 <a href="<?php echo admin_url('lims/subjects/create'); ?>" class="btn btn-primary">
                                     <i class="fa fa-plus"></i> <?php echo _l('new'); ?>
                                 </a>
-                                <div class="btn-group mleft5">
+                                <div class="subjects-bulk-actions">
                                     <select class="selectpicker" id="subjects-bulk-action" data-width="160px" title="<?php echo $capitalizeHeading(_l('bulk_actions')); ?>">
                                         <option value="active"><?php echo $capitalizeHeading(_l('active')); ?></option>
                                         <option value="inactive"><?php echo $capitalizeHeading(_l('inactive')); ?></option>
