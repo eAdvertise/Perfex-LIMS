@@ -334,6 +334,8 @@ class Lims_dashboard_model extends App_Model
         }
 
         $statusExpression = "COALESCE(NULLIF(t.status_code, ''), NULLIF(t.status, ''), 'pending')";
+        $terminalStatuses = ['complete', 'completed', 'verified', 'approved', 'reported', 'signed', 'canceled'];
+        $escapedTerminalStatuses = implode(', ', array_map([$this->db, 'escape'], $terminalStatuses));
         return $this->db
             ->select("t.id, {$statusExpression} AS test_status, t.started_at, a.name AS analysis_name, d.name AS department_name, s.order_id, s.sample_uid, o.order_barcode, o.due_at, o.priority", false)
             ->from($tests . ' AS t')
@@ -342,7 +344,7 @@ class Lims_dashboard_model extends App_Model
             ->join($this->table('samples') . ' AS s', 's.id = t.sample_id', 'inner')
             ->join($this->table('orders') . ' AS o', 'o.id = s.order_id', 'inner')
             ->where('t.assigned_staff', $staffId)
-            ->where_not_in($statusExpression, ['complete', 'completed', 'verified', 'approved', 'reported', 'signed', 'canceled'], false)
+            ->where("{$statusExpression} NOT IN ({$escapedTerminalStatuses})", null, false)
             ->order_by('(o.due_at IS NOT NULL AND o.due_at < NOW())', 'DESC', false)
             ->order_by('o.priority', 'DESC')
             ->order_by('o.due_at', 'ASC')

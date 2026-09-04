@@ -2,12 +2,12 @@
 /*
 Module Name: LIMS Module
 Description: Laboratory Information Management System
-Version: 3.1.1
+Version: 3.1.2
 Requires at least: 3.4.*
 Author: eAdvertise
 */
 
-define('LIMS_MODULE_VERSION', '3.1.1');
+define('LIMS_MODULE_VERSION', '3.1.2');
 define('LIMS_MODULE_NAME', 'lims');
 
 register_activation_hook(LIMS_MODULE_NAME, 'lims_module_activation_hook');
