@@ -39,6 +39,28 @@ $capitalizeHeading = static function ($heading) {
 
     return ucfirst($heading);
 };
+
+$customerFilters = [];
+$typeFilters = [];
+$cityFilters = [];
+foreach (($rows ?? []) as $subjectRow) {
+    if (!empty($subjectRow->client_id) && !empty($subjectRow->client_company)) {
+        $customerFilters[(int)$subjectRow->client_id] = (string)$subjectRow->client_company;
+    }
+
+    $subjectType = trim((string)($subjectRow->subject_type ?? ''));
+    if ($subjectType !== '') {
+        $typeFilters[$subjectType] = $capitalizeHeading($subjectType);
+    }
+
+    $subjectCity = trim((string)($subjectRow->city ?? ''));
+    if ($subjectCity !== '') {
+        $cityFilters[$subjectCity] = $subjectCity;
+    }
+}
+natcasesort($customerFilters);
+natcasesort($typeFilters);
+natcasesort($cityFilters);
 ?>
 <div id="wrapper">
     <div class="content">
@@ -62,6 +84,40 @@ $capitalizeHeading = static function ($heading) {
                             <?php endif; ?>
                         </div>
 
+                        <form id="subjects-filter-form" class="row mbot20">
+                            <div class="col-md-3">
+                                <label for="subjects-filter-customer"><?php echo $capitalizeHeading(_l('client')); ?></label>
+                                <select id="subjects-filter-customer" class="selectpicker" data-width="100%" data-live-search="true">
+                                    <option value=""></option>
+                                    <?php foreach ($customerFilters as $customerName): ?>
+                                        <option value="<?php echo html_escape($customerName); ?>"><?php echo html_escape($customerName); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="subjects-filter-type"><?php echo $capitalizeHeading(_l('type')); ?></label>
+                                <select id="subjects-filter-type" class="selectpicker" data-width="100%">
+                                    <option value=""></option>
+                                    <?php foreach ($typeFilters as $type => $typeLabel): ?>
+                                        <option value="<?php echo html_escape($type); ?>"><?php echo html_escape($typeLabel); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="subjects-filter-city"><?php echo $capitalizeHeading(_l('city')); ?></label>
+                                <select id="subjects-filter-city" class="selectpicker" data-width="100%" data-live-search="true">
+                                    <option value=""></option>
+                                    <?php foreach ($cityFilters as $city): ?>
+                                        <option value="<?php echo html_escape($city); ?>"><?php echo html_escape($city); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-3 mtop25">
+                                <button type="submit" class="btn btn-primary"><?php echo $capitalizeHeading(_l('search')); ?></button>
+                                <button type="button" class="btn btn-default" id="subjects-clear-filters"><?php echo $capitalizeHeading(_l('clear')); ?></button>
+                            </div>
+                        </form>
+
                         <div class="table-responsive">
                             <table class="table table-striped dt-table table-subjects" data-order-col="1" data-order-type="desc">
                                 <thead>
@@ -72,6 +128,7 @@ $capitalizeHeading = static function ($heading) {
                                     <th><?php echo $capitalizeHeading(_l('name')); ?></th>
                                     <th><?php echo $capitalizeHeading(_l('type')); ?></th>
                                     <th><?php echo $capitalizeHeading(_l('client')); ?></th>
+                                    <th><?php echo $capitalizeHeading(_l('city')); ?></th>
                                     <th><?php echo $capitalizeHeading(_l('phonenumber')); ?></th>
                                     <th><?php echo $capitalizeHeading(_l('status')); ?></th>
                                     <th><?php echo $capitalizeHeading(_l('options')); ?></th>
@@ -107,6 +164,7 @@ $capitalizeHeading = static function ($heading) {
                                                 <span class="text-muted">&mdash;</span>
                                             <?php endif; ?>
                                         </td>
+                                        <td><?php echo html_escape((string)($s->city ?? '')); ?></td>
                                         <td><?php echo html_escape((string)($s->phone ?? '')); ?></td>
                                         <td>
                                             <span class="hide"><?php echo (int)$s->active === 1 ? $capitalizeHeading(_l('active')) : $capitalizeHeading(_l('inactive')); ?></span>
@@ -211,6 +269,28 @@ $capitalizeHeading = static function ($heading) {
 
             window.alert(message);
         }
+
+        jq(document).on('submit', '#subjects-filter-form', function (event) {
+            event.preventDefault();
+
+            var table = jq('.table-subjects').DataTable();
+            table.column(5).search(jq('#subjects-filter-customer').val() || '');
+            table.column(4).search(jq('#subjects-filter-type').val() || '');
+            table.column(6).search(jq('#subjects-filter-city').val() || '');
+            table.draw();
+            jq('#subjects-select-all').prop('checked', false);
+        });
+
+        jq(document).on('click', '#subjects-clear-filters', function () {
+            var $form = jq('#subjects-filter-form');
+            $form[0].reset();
+            $form.find('.selectpicker').selectpicker('refresh');
+
+            var table = jq('.table-subjects').DataTable();
+            table.columns([4, 5, 6]).search('');
+            table.draw();
+            jq('#subjects-select-all').prop('checked', false);
+        });
 
         jq(document).on('change', '.subject-status-toggle', function () {
             var $toggle = jq(this);
