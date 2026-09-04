@@ -276,6 +276,12 @@ foreach ($lims_status_rows as $st) {
     var dt = $table.length && $.fn.DataTable ? $table.DataTable() : null;
     if (!dt) { return; }
 
+    var initialStatus = <?php echo json_encode((string)$this->input->get('status')); ?>;
+    if (initialStatus && $('#filter-status option[value="' + initialStatus + '"]').length) {
+      $('#filter-status').val(initialStatus);
+      dt.column(6).search(initialStatus, true, false).draw();
+    }
+
     // Subject filter -> column 1
     $('#filter-subject').on('keyup change', function(){
       dt.column(1).search(this.value).draw();

@@ -1289,7 +1289,7 @@ class Tests_model extends App_Model
 				  SELECT 1 FROM tbllims_results r
 				  WHERE r.test_id = t.id
 			  )
-		", [$now, $order_id]);
+		", [$order_id]);
 
 
         // 2) Order -> signed
