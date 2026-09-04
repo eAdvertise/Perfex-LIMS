@@ -973,3 +973,14 @@ $lang['lims_subject_details'] = 'Details';
 $lang['customer_profile'] = 'Customer';
 $lang['lims_subject_receipts_or_payments'] = 'Receipts';
 $lang['delivery_notes'] = 'Delivery Notes';
+
+$lang['lims_dashboard_overview'] = 'LIMS Overview';
+$lang['lims_dashboard_orders_today'] = 'Orders today';
+$lang['lims_dashboard_pending_samples'] = 'Pending samples';
+$lang['lims_dashboard_tests_progress'] = 'Tests in progress';
+$lang['lims_dashboard_ready_to_sign'] = 'Ready to sign';
+$lang['lims_dashboard_overdue'] = 'Overdue';
+$lang['lims_dashboard_completed_today'] = 'Completed today';
+$lang['lims_dashboard_attention_orders'] = 'Orders requiring attention';
+$lang['lims_dashboard_review_sign'] = 'Review';
+$lang['lims_dashboard_todays_appointments'] = "Today's appointments";
