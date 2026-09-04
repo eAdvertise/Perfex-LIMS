@@ -1,5 +1,11 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
 
+// Perfex may include the pending migration before firing the module update hook.
+// Keep a repeated include harmless instead of redeclaring the class fatally.
+if (class_exists('Migration_Version_304', false)) {
+    return;
+}
+
 class Migration_Version_304 extends App_module_migration
 {
     public function up()

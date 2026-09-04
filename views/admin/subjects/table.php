@@ -1,5 +1,7 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed');
 
+$CI = &get_instance();
+
 $aColumns = [
     's.id',
     's.internal_code',
@@ -13,7 +15,7 @@ $sIndexColumn = 's.id';
 $sTable = db_prefix() . 'lims_subjects AS s';
 $join = ['LEFT JOIN ' . db_prefix() . 'clients AS c ON c.userid = s.client_id'];
 $where = [];
-if ($this->ci->db->field_exists('is_deleted', db_prefix() . 'lims_subjects')) {
+if ($CI->db->field_exists('is_deleted', db_prefix() . 'lims_subjects')) {
     $where[] = 'AND s.is_deleted = 0';
 }
 

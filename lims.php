@@ -142,6 +142,19 @@ function lims_run_migrations()
     if ($hasRun) {
         return;
     }
+
+    // Perfex can load the pending migration before it invokes the module update
+    // hook. In that case this wrapper must not start a second migration pass.
+    // The static flag above only protects calls made through this function, so
+    // also check for migration classes that were loaded by Perfex itself.
+    foreach (glob(__DIR__ . '/migrations/*_version_*.php') ?: [] as $migrationFile) {
+        if (preg_match('/^[0-9]+_version_([0-9]+)\.php$/', basename($migrationFile), $matches)
+            && class_exists('Migration_Version_' . $matches[1], false)) {
+            $hasRun = true;
+            return;
+        }
+    }
+
     $CI = &get_instance();
 
     if (!class_exists('App_module_migration')) {
