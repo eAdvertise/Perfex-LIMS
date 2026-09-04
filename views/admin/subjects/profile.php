@@ -1,5 +1,10 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 <?php init_head(); ?>
+<style>
+    .navbar-pills-flat {
+        border: 0;
+    }
+</style>
 <?php
 $subjectId = (int)$subject->id;
 $canManage = has_permission('lims', '', 'manage_orders') || has_permission('lims', '', 'admin');
@@ -7,13 +12,13 @@ $tabs = [
     'profile' => ['icon' => 'fa fa-user', 'label' => _l('profile')],
     'orders' => ['icon' => 'fa fa-flask', 'label' => _l('lims_subject_orders')],
     'samples' => ['icon' => 'fa fa-vial', 'label' => _l('lims_subject_samples')],
-    'invoices' => ['icon' => 'fa fa-file-text-o', 'label' => _l('lims_subject_invoices')],
-    'creditnotes' => ['icon' => 'fa fa-file-o', 'label' => _l('lims_subject_credit_notes')],
-    'receipts_payments' => ['icon' => 'fa fa-money', 'label' => _l('lims_subject_payments')],
+    'invoices' => ['icon' => 'fa fa-file-text', 'label' => _l('lims_subject_invoices')],
+    'creditnotes' => ['icon' => 'fa fa-file', 'label' => _l('lims_subject_credit_notes')],
+    'receipts_payments' => ['icon' => 'fa fa-money-bill-1', 'label' => _l('lims_subject_payments')],
     'waybills' => ['icon' => 'fa fa-truck', 'label' => _l('delivery_notes') ?: 'Delivery notes'],
-    'notes' => ['icon' => 'fa fa-sticky-note-o', 'label' => _l('notes')],
+    'notes' => ['icon' => 'fa fa-sticky-note', 'label' => _l('notes')],
     'files' => ['icon' => 'fa fa-paperclip', 'label' => _l('lims_subject_files')],
-    'reminders' => ['icon' => 'fa fa-bell-o', 'label' => _l('lims_subject_reminders')],
+    'reminders' => ['icon' => 'fa fa-bell', 'label' => _l('lims_subject_reminders')],
 ];
 $displayValue = static function ($value) {
     return $value !== null && $value !== '' ? html_escape((string)$value) : '<span class="text-muted">—</span>';
