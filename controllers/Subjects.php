@@ -22,16 +22,20 @@ class Subjects extends AdminController
             access_denied('lims');
         }
 
-        $p = db_prefix();
+        $p             = db_prefix();
+        $subjectsTable = $p . 'lims_subjects';
+        $hasSoftDelete = $this->db->field_exists('is_deleted', $subjectsTable);
 
         // Φέρνουμε όλα τα subjects + client company (αν υπάρχει)
         $this->db
             ->select('s.*, c.company AS client_company')
-            ->from($p . 'lims_subjects AS s')
+            ->from($subjectsTable . ' AS s')
             ->join($p . 'clients AS c', 'c.userid = s.client_id', 'left')
             ->order_by('s.id', 'DESC');
 
-        if ($this->db->field_exists('is_deleted', $p . 'lims_subjects')) {
+        // Run schema inspection before constructing the query. CodeIgniter database
+        // drivers may reset Query Builder state while listing table fields.
+        if ($hasSoftDelete) {
             $this->db->where('s.is_deleted', 0);
         }
 
