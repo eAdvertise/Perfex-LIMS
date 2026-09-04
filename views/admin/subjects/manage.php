@@ -1,31 +1,137 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 <?php init_head(); ?>
+<style>
+    .subjects-bulk-actions {
+        display: inline-flex;
+        align-items: stretch;
+        margin-left: 5px;
+        vertical-align: middle;
+    }
+
+    .subjects-bulk-actions .bootstrap-select {
+        order: 1;
+        margin: 0;
+    }
+
+    .subjects-bulk-actions .bootstrap-select > .dropdown-toggle {
+        border-radius: 4px 0 0 4px;
+    }
+
+    .subjects-bulk-actions #subjects-apply-bulk-action {
+        order: 2;
+        margin-left: -1px;
+        border-radius: 0 4px 4px 0;
+    }
+</style>
+<?php
+$canManage = has_permission('lims', '', 'manage_orders') || has_permission('lims', '', 'admin');
+$capitalizeHeading = static function ($heading) {
+    $heading = (string)$heading;
+
+    if ($heading === '') {
+        return '';
+    }
+
+    if (function_exists('mb_substr') && function_exists('mb_strtoupper')) {
+        return mb_strtoupper(mb_substr($heading, 0, 1, 'UTF-8'), 'UTF-8')
+            . mb_substr($heading, 1, null, 'UTF-8');
+    }
+
+    return ucfirst($heading);
+};
+
+$customerFilters = [];
+$typeFilters = [];
+$cityFilters = [];
+foreach (($rows ?? []) as $subjectRow) {
+    if (!empty($subjectRow->client_id) && !empty($subjectRow->client_company)) {
+        $customerFilters[(int)$subjectRow->client_id] = (string)$subjectRow->client_company;
+    }
+
+    $subjectType = trim((string)($subjectRow->subject_type ?? ''));
+    if ($subjectType !== '') {
+        $typeFilters[$subjectType] = $capitalizeHeading($subjectType);
+    }
+
+    $subjectCity = trim((string)($subjectRow->city ?? ''));
+    if ($subjectCity !== '') {
+        $cityFilters[$subjectCity] = $subjectCity;
+    }
+}
+natcasesort($customerFilters);
+natcasesort($typeFilters);
+natcasesort($cityFilters);
+?>
 <div id="wrapper">
     <div class="content">
         <div class="row">
             <div class="col-md-12">
                 <div class="panel_s">
                     <div class="panel-body">
-                        <div class="mbot15">
-                            <?php if (has_permission('lims', '', 'manage_orders') || has_permission('lims', '', 'admin')): ?>
+                        <div class="clearfix mbot15">
+                            <?php if ($canManage): ?>
                                 <a href="<?php echo admin_url('lims/subjects/create'); ?>" class="btn btn-primary">
                                     <i class="fa fa-plus"></i> <?php echo _l('new'); ?>
                                 </a>
+                                <div class="subjects-bulk-actions">
+                                    <select class="selectpicker" id="subjects-bulk-action" data-width="160px" title="<?php echo $capitalizeHeading(_l('bulk_actions')); ?>">
+                                        <option value="active"><?php echo $capitalizeHeading(_l('active')); ?></option>
+                                        <option value="inactive"><?php echo $capitalizeHeading(_l('inactive')); ?></option>
+                                        <option value="delete"><?php echo $capitalizeHeading(_l('delete')); ?></option>
+                                    </select>
+                                    <button type="button" class="btn btn-default" id="subjects-apply-bulk-action"><?php echo $capitalizeHeading(_l('apply')); ?></button>
+                                </div>
                             <?php endif; ?>
                         </div>
 
+                        <form id="subjects-filter-form" class="row mbot20">
+                            <div class="col-md-3">
+                                <label for="subjects-filter-customer"><?php echo $capitalizeHeading(_l('client')); ?></label>
+                                <select id="subjects-filter-customer" class="selectpicker" data-width="100%" data-live-search="true">
+                                    <option value=""></option>
+                                    <?php foreach ($customerFilters as $customerName): ?>
+                                        <option value="<?php echo html_escape($customerName); ?>"><?php echo html_escape($customerName); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="subjects-filter-type"><?php echo $capitalizeHeading(_l('type')); ?></label>
+                                <select id="subjects-filter-type" class="selectpicker" data-width="100%">
+                                    <option value=""></option>
+                                    <?php foreach ($typeFilters as $type => $typeLabel): ?>
+                                        <option value="<?php echo html_escape($type); ?>"><?php echo html_escape($typeLabel); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="subjects-filter-city"><?php echo $capitalizeHeading(_l('city')); ?></label>
+                                <select id="subjects-filter-city" class="selectpicker" data-width="100%" data-live-search="true">
+                                    <option value=""></option>
+                                    <?php foreach ($cityFilters as $city): ?>
+                                        <option value="<?php echo html_escape($city); ?>"><?php echo html_escape($city); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-3 mtop25">
+                                <button type="submit" class="btn btn-primary"><?php echo $capitalizeHeading(_l('search')); ?></button>
+                                <button type="button" class="btn btn-default" id="subjects-clear-filters"><?php echo $capitalizeHeading(_l('clear')); ?></button>
+                            </div>
+                        </form>
+
                         <div class="table-responsive">
-                            <table class="table table-striped table-subjects">
+                            <table class="table table-striped dt-table table-subjects" data-order-col="1" data-order-type="desc">
                                 <thead>
                                 <tr>
+                                    <th class="not-export"><input type="checkbox" id="subjects-select-all"></th>
                                     <th>#</th>
-                                    <th><?php echo _l('lims_subject_internal_code') ?: 'Code'; ?></th>
-                                    <th><?php echo _l('lims_subject_name') ?: _l('name'); ?></th>
-                                    <th><?php echo _l('lims_subject_type') ?: _l('type'); ?></th>
-                                    <th><?php echo _l('email'); ?></th>
-                                    <th><?php echo _l('phonenumber'); ?></th>
-                                    <th><?php echo _l('status'); ?></th>
-                                    <th></th>
+                                    <th><?php echo $capitalizeHeading(_l('lims_subject_internal_code') ?: 'Internal code'); ?></th>
+                                    <th><?php echo $capitalizeHeading(_l('name')); ?></th>
+                                    <th><?php echo $capitalizeHeading(_l('type')); ?></th>
+                                    <th><?php echo $capitalizeHeading(_l('client')); ?></th>
+                                    <th><?php echo $capitalizeHeading(_l('city')); ?></th>
+                                    <th><?php echo $capitalizeHeading(_l('phonenumber')); ?></th>
+                                    <th><?php echo $capitalizeHeading(_l('status')); ?></th>
+                                    <th><?php echo $capitalizeHeading(_l('options')); ?></th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -40,24 +146,43 @@
                                     }
                                     ?>
                                     <tr>
+                                        <td><input type="checkbox" class="subject-row-select" value="<?php echo (int)$s->id; ?>"></td>
                                         <td><?php echo (int)$s->id; ?></td>
-                                        <td><?php echo html_escape((string)($s->internal_code ?? '')); ?></td>
+                                        <td>
+                                            <a href="<?php echo admin_url('lims/subjects/view/' . (int)$s->id); ?>">
+                                                <?php echo html_escape((string)($s->internal_code ?? '')); ?>
+                                            </a>
+                                        </td>
                                         <td><?php echo html_escape($display); ?></td>
                                         <td><?php echo html_escape((string)($s->subject_type ?? '-')); ?></td>
-                                        <td><?php echo html_escape((string)($s->email ?? '')); ?></td>
+                                        <td>
+                                            <?php if (!empty($s->client_id) && !empty($s->client_company)): ?>
+                                                <a href="<?php echo admin_url('clients/client/' . (int)$s->client_id); ?>">
+                                                    <?php echo html_escape($s->client_company); ?>
+                                                </a>
+                                            <?php else: ?>
+                                                <span class="text-muted">&mdash;</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><?php echo html_escape((string)($s->city ?? '')); ?></td>
                                         <td><?php echo html_escape((string)($s->phone ?? '')); ?></td>
                                         <td>
-                                            <?php if ((int)$s->active === 1): ?>
-                                                <span class="label label-success"><?php echo _l('active'); ?></span>
-                                            <?php else: ?>
-                                                <span class="label label-default"><?php echo _l('inactive'); ?></span>
-                                            <?php endif; ?>
+                                            <span class="hide"><?php echo (int)$s->active === 1 ? $capitalizeHeading(_l('active')) : $capitalizeHeading(_l('inactive')); ?></span>
+                                            <div class="onoffswitch">
+                                                <input type="checkbox"
+                                                       class="onoffswitch-checkbox subject-status-toggle"
+                                                       id="subject_active_<?php echo (int)$s->id; ?>"
+                                                       data-id="<?php echo (int)$s->id; ?>"
+                                                       <?php echo (int)$s->active === 1 ? 'checked' : ''; ?>
+                                                       <?php echo $canManage ? '' : 'disabled'; ?>>
+                                                <label class="onoffswitch-label" for="subject_active_<?php echo (int)$s->id; ?>"></label>
+                                            </div>
                                         </td>
                                         <td class="text-right">
                                             <a href="<?php echo admin_url('lims/subjects/view/' . (int)$s->id); ?>" class="btn btn-default btn-sm">
                                                 <i class="fa fa-eye"></i>
                                             </a>
-                                            <?php if (has_permission('lims', '', 'manage_orders') || has_permission('lims', '', 'admin')): ?>
+                                            <?php if ($canManage): ?>
                                                 <a href="<?php echo admin_url('lims/subjects/delete/' . (int)$s->id); ?>"
                                                    class="btn btn-danger btn-sm js-lims-subject-delete"
                                                    data-subject-id="<?php echo (int)$s->id; ?>">
@@ -135,6 +260,102 @@
         if (!jq) {
             return;
         }
+
+        function showSubjectsMessage(type, message) {
+            if (typeof alert_float === 'function') {
+                alert_float(type, message);
+                return;
+            }
+
+            window.alert(message);
+        }
+
+        jq(document).on('submit', '#subjects-filter-form', function (event) {
+            event.preventDefault();
+
+            var table = jq('.table-subjects').DataTable();
+            table.column(5).search(jq('#subjects-filter-customer').val() || '');
+            table.column(4).search(jq('#subjects-filter-type').val() || '');
+            table.column(6).search(jq('#subjects-filter-city').val() || '');
+            table.draw();
+            jq('#subjects-select-all').prop('checked', false);
+        });
+
+        jq(document).on('click', '#subjects-clear-filters', function () {
+            var $form = jq('#subjects-filter-form');
+            $form[0].reset();
+            $form.find('.selectpicker').selectpicker('refresh');
+
+            var table = jq('.table-subjects').DataTable();
+            table.columns([4, 5, 6]).search('');
+            table.draw();
+            jq('#subjects-select-all').prop('checked', false);
+        });
+
+        jq(document).on('change', '.subject-status-toggle', function () {
+            var $toggle = jq(this);
+            var active = $toggle.is(':checked') ? 1 : 0;
+
+            $toggle.prop('disabled', true);
+            jq.post("<?php echo admin_url('lims/subjects/toggle_status'); ?>", {
+                id: parseInt($toggle.data('id'), 10),
+                active: active
+            }, null, 'json').done(function (response) {
+                if (!response || !response.success) {
+                    $toggle.prop('checked', !active);
+                    showSubjectsMessage('danger', response && response.message ? response.message : 'Status could not be updated.');
+                }
+            }).fail(function () {
+                $toggle.prop('checked', !active);
+                showSubjectsMessage('danger', 'Status could not be updated.');
+            }).always(function () {
+                $toggle.prop('disabled', false);
+            });
+        });
+
+        jq(document).on('change', '#subjects-select-all', function () {
+            jq('.subject-row-select').prop('checked', jq(this).is(':checked'));
+        });
+
+        jq(document).on('change', '.subject-row-select', function () {
+            var total = jq('.subject-row-select').length;
+            var selected = jq('.subject-row-select:checked').length;
+            jq('#subjects-select-all').prop('checked', total > 0 && total === selected);
+        });
+
+        jq(document).on('click', '#subjects-apply-bulk-action', function () {
+            var action = jq('#subjects-bulk-action').val();
+            var ids = jq('.subject-row-select:checked').map(function () {
+                return parseInt(this.value, 10);
+            }).get();
+
+            if (!action || !ids.length) {
+                showSubjectsMessage('warning', 'Select subjects and a bulk action first.');
+                return;
+            }
+
+            if (action === 'delete' && !window.confirm('Delete the selected subjects and all of their linked records?')) {
+                return;
+            }
+
+            var $button = jq(this).prop('disabled', true);
+            jq.post("<?php echo admin_url('lims/subjects/bulk_action'); ?>", {
+                action: action,
+                ids: ids
+            }, null, 'json').done(function (response) {
+                if (response && response.success) {
+                    window.location.reload();
+                    return;
+                }
+
+                showSubjectsMessage('danger', response && response.message ? response.message : 'The bulk action could not be completed.');
+            }).fail(function () {
+                showSubjectsMessage('danger', 'The bulk action could not be completed.');
+            }).always(function () {
+                $button.prop('disabled', false);
+            });
+        });
+
         var state = {
             subjectId: 0,
             deleteUrl: '',

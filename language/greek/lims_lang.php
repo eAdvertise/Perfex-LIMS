@@ -589,6 +589,9 @@ $lang['lims_subject_name_help']             = 'Χρησιμοποιείται κ
 
 $lang['lims_subject_first_name']            = 'Όνομα';
 $lang['lims_subject_last_name']             = 'Επώνυμο';
+$lang['first_name']                         = 'Όνομα';
+$lang['last_name']                          = 'Επώνυμο';
+$lang['date_of_birth']                      = 'Ημερομηνία γέννησης';
 
 $lang['lims_subject_code']                  = 'Εσωτερικός κωδικός';
 $lang['lims_subject_id_number']             = 'Αρ. ταυτότητας / διαβατηρίου';
