@@ -1,5 +1,21 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 <?php init_head(); ?>
+<?php
+$capitalizeHeading = static function ($heading) {
+    $heading = (string)$heading;
+
+    if ($heading === '') {
+        return '';
+    }
+
+    if (function_exists('mb_substr') && function_exists('mb_strtoupper')) {
+        return mb_strtoupper(mb_substr($heading, 0, 1, 'UTF-8'), 'UTF-8')
+            . mb_substr($heading, 1, null, 'UTF-8');
+    }
+
+    return ucfirst($heading);
+};
+?>
 <div id="wrapper">
     <div class="content">
         <div class="row">
@@ -15,17 +31,17 @@
                         </div>
 
                         <div class="table-responsive">
-                            <table class="table table-striped table-subjects">
+                            <table class="table table-striped dt-table table-subjects" data-order-col="0" data-order-type="desc">
                                 <thead>
                                 <tr>
                                     <th>#</th>
-                                    <th><?php echo _l('lims_subject_internal_code') ?: 'Internal code'; ?></th>
-                                    <th><?php echo _l('name'); ?></th>
-                                    <th><?php echo _l('type'); ?></th>
-                                    <th><?php echo _l('client'); ?></th>
-                                    <th><?php echo _l('phonenumber'); ?></th>
-                                    <th><?php echo _l('status'); ?></th>
-                                    <th><?php echo _l('options'); ?></th>
+                                    <th><?php echo $capitalizeHeading(_l('lims_subject_internal_code') ?: 'Internal code'); ?></th>
+                                    <th><?php echo $capitalizeHeading(_l('name')); ?></th>
+                                    <th><?php echo $capitalizeHeading(_l('type')); ?></th>
+                                    <th><?php echo $capitalizeHeading(_l('client')); ?></th>
+                                    <th><?php echo $capitalizeHeading(_l('phonenumber')); ?></th>
+                                    <th><?php echo $capitalizeHeading(_l('status')); ?></th>
+                                    <th><?php echo $capitalizeHeading(_l('options')); ?></th>
                                 </tr>
                                 </thead>
                                 <tbody>
