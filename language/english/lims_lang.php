@@ -617,6 +617,9 @@ $lang['lims_subject_name_help']             = 'Used mainly for non-patient subje
 
 $lang['lims_subject_first_name']            = 'First name';
 $lang['lims_subject_last_name']             = 'Last name';
+$lang['first_name']                         = 'First name';
+$lang['last_name']                          = 'Last name';
+$lang['date_of_birth']                      = 'Date of birth';
 
 $lang['lims_subject_code']                  = 'Internal code';
 $lang['lims_subject_id_number']             = 'ID / Passport number';
@@ -970,3 +973,50 @@ $lang['lims_subject_details'] = 'Details';
 $lang['customer_profile'] = 'Customer';
 $lang['lims_subject_receipts_or_payments'] = 'Receipts';
 $lang['delivery_notes'] = 'Delivery Notes';
+
+$lang['lims_dashboard_overview'] = 'LIMS Overview';
+$lang['lims_dashboard_orders_today'] = 'Orders today';
+$lang['lims_dashboard_pending_samples'] = 'Pending samples';
+$lang['lims_dashboard_tests_progress'] = 'Tests in progress';
+$lang['lims_dashboard_ready_to_sign'] = 'Ready to sign';
+$lang['lims_dashboard_overdue'] = 'Overdue';
+$lang['lims_dashboard_completed_today'] = 'Completed today';
+$lang['lims_dashboard_attention_orders'] = 'Orders requiring attention';
+$lang['lims_dashboard_review_sign'] = 'Review';
+$lang['lims_dashboard_todays_appointments'] = "Today's appointments";
+
+$lang['lims_dashboard_orders_by_status'] = 'Orders by status';
+$lang['lims_dashboard_recent_activity'] = 'Recent LIMS activity';
+
+$lang['lims_dashboard_tests_by_department'] = 'Tests by department';
+$lang['lims_dashboard_pending'] = 'Pending';
+$lang['lims_dashboard_in_progress'] = 'In progress';
+$lang['lims_dashboard_completed'] = 'Completed';
+$lang['lims_dashboard_unassigned'] = 'Unassigned';
+
+$lang['lims_dashboard_turnaround_time'] = 'Turnaround time';
+$lang['lims_dashboard_last_30_days'] = 'Last 30 days';
+$lang['lims_dashboard_average_completion'] = 'Average completion';
+$lang['lims_dashboard_on_time'] = 'Completed on time';
+$lang['lims_dashboard_completed_orders'] = 'Completed orders';
+$lang['lims_dashboard_vs_previous_period'] = 'vs previous period';
+$lang['lims_dashboard_activity_trend'] = 'Orders & samples trend';
+$lang['lims_dashboard_last_14_days'] = 'Last 14 days';
+$lang['lims_dashboard_reports'] = 'Reports';
+
+$lang['lims_dashboard_critical_results'] = 'Critical & abnormal results';
+$lang['lims_dashboard_no_abnormal_results'] = 'No abnormal results found.';
+$lang['lims_dashboard_billing_summary'] = 'LIMS billing summary';
+$lang['lims_dashboard_uninvoiced_orders'] = 'Uninvoiced orders';
+$lang['lims_dashboard_draft_invoices'] = 'Draft invoices';
+$lang['lims_dashboard_unpaid_invoices'] = 'Unpaid invoices';
+$lang['lims_dashboard_overdue_invoices'] = 'Overdue invoices';
+
+$lang['lims_dashboard_my_assigned_tests'] = 'My assigned tests';
+$lang['lims_dashboard_no_assigned_tests'] = 'You have no pending assigned tests.';
+
+$lang['lims_dashboard_samples_requiring_action'] = 'Samples requiring action';
+$lang['lims_dashboard_next_action'] = 'Next action';
+$lang['lims_dashboard_collect_sample'] = 'Collect sample';
+$lang['lims_dashboard_receive_sample'] = 'Receive at lab';
+$lang['lims_dashboard_no_pending_samples'] = 'No samples require action.';

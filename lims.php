@@ -2,12 +2,12 @@
 /*
 Module Name: LIMS Module
 Description: Laboratory Information Management System
-Version: 3.0.4
+Version: 3.1.3
 Requires at least: 3.4.*
 Author: eAdvertise
 */
 
-define('LIMS_MODULE_VERSION', '3.0.4');
+define('LIMS_MODULE_VERSION', '3.1.3');
 define('LIMS_MODULE_NAME', 'lims');
 
 register_activation_hook(LIMS_MODULE_NAME, 'lims_module_activation_hook');
@@ -198,6 +198,93 @@ hooks()->add_action('app_init', 'lims_register_language_files');
 function lims_register_language_files()
 {
     register_language_files('lims', ['lims']);
+}
+
+
+// ======================================================
+// PERFEX DASHBOARD WIDGETS
+// ======================================================
+
+hooks()->add_filter('get_dashboard_widgets', 'lims_register_dashboard_widgets');
+function lims_register_dashboard_widgets($widgets)
+{
+    if (!has_permission('lims', '', 'view')) {
+        return $widgets;
+    }
+
+    $widgets[] = [
+        'path'      => 'lims/admin/dashboard/widgets/overview',
+        'container' => 'top-12',
+    ];
+    $widgets[] = [
+        'path'      => 'lims/admin/dashboard/widgets/attention_orders',
+        'container' => 'left-8',
+    ];
+
+    if (has_permission('lims', '', 'enter_results') || has_permission('lims', '', 'admin')) {
+        $widgets[] = [
+            'path'      => 'lims/admin/dashboard/widgets/ready_to_sign',
+            'container' => 'right-4',
+        ];
+    }
+
+    if (has_permission('lims', '', 'appointments') || has_permission('lims', '', 'admin')) {
+        $widgets[] = [
+            'path'      => 'lims/admin/dashboard/widgets/todays_appointments',
+            'container' => 'left-8',
+        ];
+    }
+
+    $widgets[] = [
+        'path'      => 'lims/admin/dashboard/widgets/orders_by_status',
+        'container' => 'right-4',
+    ];
+    $widgets[] = [
+        'path'      => 'lims/admin/dashboard/widgets/recent_activity',
+        'container' => 'left-8',
+    ];
+    $widgets[] = [
+        'path'      => 'lims/admin/dashboard/widgets/tests_by_department',
+        'container' => 'right-4',
+    ];
+    $widgets[] = [
+        'path'      => 'lims/admin/dashboard/widgets/turnaround_time',
+        'container' => 'right-4',
+    ];
+    $widgets[] = [
+        'path'      => 'lims/admin/dashboard/widgets/activity_trend',
+        'container' => 'left-8',
+    ];
+
+    if (has_permission('lims', '', 'enter_results') || has_permission('lims', '', 'verify') || has_permission('lims', '', 'approve') || has_permission('lims', '', 'admin')) {
+        $widgets[] = [
+            'path'      => 'lims/admin/dashboard/widgets/critical_results',
+            'container' => 'left-8',
+        ];
+    }
+
+    if (has_permission('lims', '', 'billing') || has_permission('lims', '', 'admin')) {
+        $widgets[] = [
+            'path'      => 'lims/admin/dashboard/widgets/billing_summary',
+            'container' => 'right-4',
+        ];
+    }
+
+    if (has_permission('lims', '', 'enter_results') || has_permission('lims', '', 'admin')) {
+        $widgets[] = [
+            'path'      => 'lims/admin/dashboard/widgets/my_assigned_tests',
+            'container' => 'left-8',
+        ];
+    }
+
+    if (has_permission('lims', '', 'manage_samples') || has_permission('lims', '', 'admin')) {
+        $widgets[] = [
+            'path'      => 'lims/admin/dashboard/widgets/samples_requiring_action',
+            'container' => 'left-8',
+        ];
+    }
+
+    return $widgets;
 }
 
 // ======================================================

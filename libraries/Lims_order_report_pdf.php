@@ -92,6 +92,7 @@ class Lims_order_report_pdf extends App_pdf
         }
 
         // ---------- Logo ----------
+        $headerLineY = 33.0;
         $logo = $this->settings['logo_path'] ?? '';
         if (is_string($logo) && $logo !== '' && is_file($logo)) {
             $w = (float)($this->settings['logo_width'] ?? 90);
@@ -107,18 +108,27 @@ class Lims_order_report_pdf extends App_pdf
             }
 
             $this->Image($logo, $x, $y, $w, 0, '', '', '', false, 300, '', false, false, 0);
+
+            // Keep the divider below the rendered logo instead of drawing it
+            // through logos whose aspect ratio makes them taller than expected.
+            $imageSize = @getimagesize($logo);
+            if (is_array($imageSize) && !empty($imageSize[0]) && !empty($imageSize[1])) {
+                $logoHeight = $w * ((float)$imageSize[1] / (float)$imageSize[0]);
+                $headerLineY = max($headerLineY, $y + $logoHeight + 2);
+                $headerLineY = min($headerLineY, 37.0);
+            }
         }
 
         // ---------- Green line (header) ----------
         $this->SetLineWidth(0.4);
         $this->SetDrawColor(0, 150, 0);
-        $this->Line(20, 33, 190, 33);
+        $this->Line(20, $headerLineY, 190, $headerLineY);
         $this->SetDrawColor(0, 0, 0);
 
         // ---------- Subtitle + Heading ----------
         $font = (string)($this->settings['font_family'] ?? 'dejavuserif');
 
-        $y = 35;
+        $y = $headerLineY + 2;
 
         $sub = (string)($this->settings['header_subtitle'] ?? '');
         if ($sub !== '') {
