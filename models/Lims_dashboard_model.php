@@ -121,4 +121,46 @@ class Lims_dashboard_model extends App_Model
             ->limit((int)$limit)
             ->get()->result();
     }
+
+    public function orders_by_status()
+    {
+        $orders = $this->table('orders');
+        if (!$this->db->table_exists($orders)) {
+            return [];
+        }
+
+        $rows = $this->db
+            ->select('status, COUNT(*) AS total', false)
+            ->from($orders)
+            ->group_by('status')
+            ->order_by('total', 'DESC')
+            ->get()->result();
+
+        $counts = [];
+        foreach ($rows as $row) {
+            $status = trim((string)$row->status);
+            if ($status !== '') {
+                $counts[$status] = (int)$row->total;
+            }
+        }
+
+        return $counts;
+    }
+
+    public function recent_activity($limit = 10)
+    {
+        $activity = $this->table('order_activity');
+        if (!$this->db->table_exists($activity)) {
+            return [];
+        }
+
+        return $this->db
+            ->select("a.id, a.order_id, a.action, a.message, a.created_at, o.order_barcode, CONCAT(COALESCE(st.firstname, ''), ' ', COALESCE(st.lastname, '')) AS staff_name", false)
+            ->from($activity . ' AS a')
+            ->join($this->table('orders') . ' AS o', 'o.id = a.order_id', 'left')
+            ->join(db_prefix() . 'staff AS st', 'st.staffid = a.staff_id', 'left')
+            ->order_by('a.created_at', 'DESC')
+            ->limit((int)$limit)
+            ->get()->result();
+    }
 }

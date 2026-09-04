@@ -984,3 +984,6 @@ $lang['lims_dashboard_completed_today'] = 'Completed today';
 $lang['lims_dashboard_attention_orders'] = 'Orders requiring attention';
 $lang['lims_dashboard_review_sign'] = 'Review';
 $lang['lims_dashboard_todays_appointments'] = "Today's appointments";
+
+$lang['lims_dashboard_orders_by_status'] = 'Orders by status';
+$lang['lims_dashboard_recent_activity'] = 'Recent LIMS activity';

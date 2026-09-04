@@ -955,3 +955,6 @@ $lang['lims_dashboard_completed_today'] = 'Ολοκληρώθηκαν σήμερ
 $lang['lims_dashboard_attention_orders'] = 'Παραγγελίες που απαιτούν προσοχή';
 $lang['lims_dashboard_review_sign'] = 'Έλεγχος';
 $lang['lims_dashboard_todays_appointments'] = 'Σημερινά ραντεβού';
+
+$lang['lims_dashboard_orders_by_status'] = 'Παραγγελίες ανά κατάσταση';
+$lang['lims_dashboard_recent_activity'] = 'Πρόσφατη δραστηριότητα LIMS';
