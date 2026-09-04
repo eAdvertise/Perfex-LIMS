@@ -163,4 +163,27 @@ class Lims_dashboard_model extends App_Model
             ->limit((int)$limit)
             ->get()->result();
     }
+
+    public function tests_by_department()
+    {
+        $tests = $this->table('tests');
+        $analyses = $this->table('analyses');
+        $departments = $this->table('departments');
+        if (!$this->db->table_exists($tests)
+            || !$this->db->table_exists($analyses)
+            || !$this->db->table_exists($departments)) {
+            return [];
+        }
+
+        $statusExpression = "COALESCE(NULLIF(t.status_code, ''), NULLIF(t.status, ''), 'pending')";
+
+        return $this->db
+            ->select("d.id, COALESCE(NULLIF(d.name, ''), '') AS department_name, COUNT(t.id) AS total_tests, SUM(CASE WHEN {$statusExpression} = 'pending' THEN 1 ELSE 0 END) AS pending_tests, SUM(CASE WHEN {$statusExpression} = 'in_progress' THEN 1 ELSE 0 END) AS progress_tests, SUM(CASE WHEN {$statusExpression} IN ('complete', 'completed', 'verified', 'approved', 'reported', 'signed') THEN 1 ELSE 0 END) AS completed_tests", false)
+            ->from($tests . ' AS t')
+            ->join($analyses . ' AS a', 'a.id = t.analysis_id', 'left')
+            ->join($departments . ' AS d', 'd.id = a.department_id', 'left')
+            ->group_by(['d.id', 'd.name'])
+            ->order_by('total_tests', 'DESC')
+            ->get()->result();
+    }
 }

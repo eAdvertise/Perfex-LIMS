@@ -987,3 +987,9 @@ $lang['lims_dashboard_todays_appointments'] = "Today's appointments";
 
 $lang['lims_dashboard_orders_by_status'] = 'Orders by status';
 $lang['lims_dashboard_recent_activity'] = 'Recent LIMS activity';
+
+$lang['lims_dashboard_tests_by_department'] = 'Tests by department';
+$lang['lims_dashboard_pending'] = 'Pending';
+$lang['lims_dashboard_in_progress'] = 'In progress';
+$lang['lims_dashboard_completed'] = 'Completed';
+$lang['lims_dashboard_unassigned'] = 'Unassigned';

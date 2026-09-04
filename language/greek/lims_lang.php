@@ -958,3 +958,9 @@ $lang['lims_dashboard_todays_appointments'] = 'Σημερινά ραντεβού
 
 $lang['lims_dashboard_orders_by_status'] = 'Παραγγελίες ανά κατάσταση';
 $lang['lims_dashboard_recent_activity'] = 'Πρόσφατη δραστηριότητα LIMS';
+
+$lang['lims_dashboard_tests_by_department'] = 'Εξετάσεις ανά τμήμα';
+$lang['lims_dashboard_pending'] = 'Σε αναμονή';
+$lang['lims_dashboard_in_progress'] = 'Σε εξέλιξη';
+$lang['lims_dashboard_completed'] = 'Ολοκληρωμένες';
+$lang['lims_dashboard_unassigned'] = 'Χωρίς ανάθεση';
