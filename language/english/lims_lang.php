@@ -993,3 +993,13 @@ $lang['lims_dashboard_pending'] = 'Pending';
 $lang['lims_dashboard_in_progress'] = 'In progress';
 $lang['lims_dashboard_completed'] = 'Completed';
 $lang['lims_dashboard_unassigned'] = 'Unassigned';
+
+$lang['lims_dashboard_turnaround_time'] = 'Turnaround time';
+$lang['lims_dashboard_last_30_days'] = 'Last 30 days';
+$lang['lims_dashboard_average_completion'] = 'Average completion';
+$lang['lims_dashboard_on_time'] = 'Completed on time';
+$lang['lims_dashboard_completed_orders'] = 'Completed orders';
+$lang['lims_dashboard_vs_previous_period'] = 'vs previous period';
+$lang['lims_dashboard_activity_trend'] = 'Orders & samples trend';
+$lang['lims_dashboard_last_14_days'] = 'Last 14 days';
+$lang['lims_dashboard_reports'] = 'Reports';

@@ -964,3 +964,13 @@ $lang['lims_dashboard_pending'] = 'Σε αναμονή';
 $lang['lims_dashboard_in_progress'] = 'Σε εξέλιξη';
 $lang['lims_dashboard_completed'] = 'Ολοκληρωμένες';
 $lang['lims_dashboard_unassigned'] = 'Χωρίς ανάθεση';
+
+$lang['lims_dashboard_turnaround_time'] = 'Χρόνος διεκπεραίωσης';
+$lang['lims_dashboard_last_30_days'] = 'Τελευταίες 30 ημέρες';
+$lang['lims_dashboard_average_completion'] = 'Μέσος χρόνος ολοκλήρωσης';
+$lang['lims_dashboard_on_time'] = 'Εντός προθεσμίας';
+$lang['lims_dashboard_completed_orders'] = 'Ολοκληρωμένες παραγγελίες';
+$lang['lims_dashboard_vs_previous_period'] = 'από την προηγούμενη περίοδο';
+$lang['lims_dashboard_activity_trend'] = 'Τάση παραγγελιών και δειγμάτων';
+$lang['lims_dashboard_last_14_days'] = 'Τελευταίες 14 ημέρες';
+$lang['lims_dashboard_reports'] = 'Reports';

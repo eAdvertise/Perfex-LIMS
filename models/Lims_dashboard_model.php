@@ -186,4 +186,82 @@ class Lims_dashboard_model extends App_Model
             ->order_by('total_tests', 'DESC')
             ->get()->result();
     }
+
+    public function turnaround_metrics($days = 30)
+    {
+        $orders = $this->table('orders');
+        $empty = ['average_hours' => 0, 'on_time_percent' => 0, 'completed_orders' => 0, 'change_percent' => 0];
+        if (!$this->db->table_exists($orders)) {
+            return $empty;
+        }
+
+        $days = max(1, (int)$days);
+        $currentStart = date('Y-m-d 00:00:00', strtotime('-' . ($days - 1) . ' days'));
+        $previousStart = date('Y-m-d 00:00:00', strtotime('-' . (($days * 2) - 1) . ' days'));
+        $completionField = $this->db->field_exists('signed_at', $orders)
+            ? 'COALESCE(signed_at, updated_at)'
+            : 'updated_at';
+
+        $getPeriod = function ($from, $to = null) use ($orders, $completionField) {
+            $this->db
+                ->select("COUNT(*) AS completed_orders, AVG(TIMESTAMPDIFF(MINUTE, created_at, {$completionField})) / 60 AS average_hours, SUM(CASE WHEN due_at IS NOT NULL AND {$completionField} <= due_at THEN 1 ELSE 0 END) AS on_time_orders, SUM(CASE WHEN due_at IS NOT NULL THEN 1 ELSE 0 END) AS orders_with_due_date", false)
+                ->from($orders)
+                ->where_in('status', ['complete', 'signed', 'reported'])
+                ->where('created_at >=', $from);
+            if ($to !== null) {
+                $this->db->where('created_at <', $to);
+            }
+
+            return $this->db->get()->row();
+        };
+
+        $current = $getPeriod($currentStart);
+        $previous = $getPeriod($previousStart, $currentStart);
+        $average = $current ? round((float)$current->average_hours, 1) : 0;
+        $previousAverage = $previous ? (float)$previous->average_hours : 0;
+        $change = $previousAverage > 0 ? round((($average - $previousAverage) / $previousAverage) * 100, 1) : 0;
+
+        return [
+            'average_hours'    => $average,
+            'on_time_percent'  => $current && (int)$current->orders_with_due_date > 0
+                ? round(((int)$current->on_time_orders / (int)$current->orders_with_due_date) * 100, 1) : 0,
+            'completed_orders' => $current ? (int)$current->completed_orders : 0,
+            'change_percent'   => $change,
+        ];
+    }
+
+    public function activity_trend($days = 14)
+    {
+        $days = max(1, min(60, (int)$days));
+        $start = date('Y-m-d 00:00:00', strtotime('-' . ($days - 1) . ' days'));
+        $series = [];
+        for ($offset = $days - 1; $offset >= 0; $offset--) {
+            $date = date('Y-m-d', strtotime('-' . $offset . ' days'));
+            $series[$date] = ['date' => $date, 'orders' => 0, 'samples' => 0, 'reports' => 0];
+        }
+
+        $sources = [
+            'orders'  => [$this->table('orders'), 'created_at', []],
+            'samples' => [$this->table('samples'), 'received_at', []],
+            'reports' => [$this->table('orders'), 'updated_at', ['status' => ['signed', 'reported']]],
+        ];
+        foreach ($sources as $key => [$table, $dateField, $filters]) {
+            if (!$this->db->table_exists($table)) {
+                continue;
+            }
+            $this->db->select("DATE({$dateField}) AS activity_date, COUNT(*) AS total", false)
+                ->from($table)->where($dateField . ' >=', $start);
+            foreach ($filters as $field => $values) {
+                $this->db->where_in($field, $values);
+            }
+            $rows = $this->db->group_by("DATE({$dateField})", false)->get()->result();
+            foreach ($rows as $row) {
+                if (isset($series[$row->activity_date])) {
+                    $series[$row->activity_date][$key] = (int)$row->total;
+                }
+            }
+        }
+
+        return array_values($series);
+    }
 }
