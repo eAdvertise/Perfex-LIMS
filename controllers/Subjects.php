@@ -22,6 +22,22 @@ class Subjects extends AdminController
             access_denied('lims');
         }
 
+        $p = db_prefix();
+
+        // Φέρνουμε όλα τα subjects + client company (αν υπάρχει)
+        $this->db
+            ->select('s.*, c.company AS client_company')
+            ->from($p . 'lims_subjects AS s')
+            ->join($p . 'clients AS c', 'c.userid = s.client_id', 'left')
+            ->order_by('s.id', 'DESC');
+
+        if ($this->db->field_exists('is_deleted', $p . 'lims_subjects')) {
+            $this->db->where('s.is_deleted', 0);
+        }
+
+        $rows = $this->db->get()->result();
+
+        $data['rows']  = $rows;
         $data['title'] = _l('lims_subjects');
 
         $this->load->view('lims/admin/subjects/manage', $data);
@@ -491,15 +507,6 @@ class Subjects extends AdminController
 		]);
 		die;
 	}
-	public function table()
-	{
-		if (!has_permission('lims', '', 'view')) {
-			ajax_access_denied();
-		}
-
-		$this->app->get_table_data(module_views_path('lims', 'admin/subjects/table'));
-	}
-
 	public function add_note($id)
 	{
 		if (!has_permission('lims', '', 'manage_orders') && !has_permission('lims', '', 'admin')) {

@@ -15,7 +15,7 @@
                         </div>
 
                         <div class="table-responsive">
-                            <table class="table table-subjects">
+                            <table class="table dt-table">
                                 <thead>
                                 <tr>
                                     <th>#</th>
@@ -28,7 +28,46 @@
                                     <th></th>
                                 </tr>
                                 </thead>
-                                <tbody></tbody>
+                                <tbody>
+                                <?php foreach (($rows ?? []) as $s): ?>
+                                    <?php
+                                    $display = trim((string)($s->subject_name ?? ''));
+                                    if ($display === '') {
+                                        $display = trim((string)($s->first_name ?? '') . ' ' . (string)($s->last_name ?? ''));
+                                    }
+                                    if ($display === '') {
+                                        $display = '#' . (int)$s->id;
+                                    }
+                                    ?>
+                                    <tr>
+                                        <td><?php echo (int)$s->id; ?></td>
+                                        <td><?php echo html_escape((string)($s->internal_code ?? '')); ?></td>
+                                        <td><?php echo html_escape($display); ?></td>
+                                        <td><?php echo html_escape((string)($s->subject_type ?? '-')); ?></td>
+                                        <td><?php echo html_escape((string)($s->email ?? '')); ?></td>
+                                        <td><?php echo html_escape((string)($s->phone ?? '')); ?></td>
+                                        <td>
+                                            <?php if ((int)$s->active === 1): ?>
+                                                <span class="label label-success"><?php echo _l('active'); ?></span>
+                                            <?php else: ?>
+                                                <span class="label label-default"><?php echo _l('inactive'); ?></span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="text-right">
+                                            <a href="<?php echo admin_url('lims/subjects/view/' . (int)$s->id); ?>" class="btn btn-default btn-sm">
+                                                <i class="fa fa-eye"></i>
+                                            </a>
+                                            <?php if (has_permission('lims', '', 'manage_orders') || has_permission('lims', '', 'admin')): ?>
+                                                <a href="<?php echo admin_url('lims/subjects/delete/' . (int)$s->id); ?>"
+                                                   class="btn btn-danger btn-sm js-lims-subject-delete"
+                                                   data-subject-id="<?php echo (int)$s->id; ?>">
+                                                    <i class="fa fa-trash"></i>
+                                                </a>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                </tbody>
                             </table>
                         </div>
                     </div>
@@ -107,8 +146,6 @@
         var $countsWrap = $modal.find('.js-delete-modal-counts');
         var $transferWrap = $modal.find('.js-transfer-target-wrap');
         var $transferInput = $modal.find('#subject-transfer-target-id');
-
-        initDataTable('.table-subjects', admin_url + 'lims/subjects/table', [7], [7], undefined, [0, 'desc']);
 
         function buildDeleteUrl(subjectId, mode, targetId) {
             var url = "<?php echo admin_url('lims/subjects/delete/'); ?>" + subjectId
